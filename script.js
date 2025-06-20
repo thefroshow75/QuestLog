@@ -1,302 +1,517 @@
-let xp = 0;
-let level = 0;
+// Add Form
 
-const expDisplay = document.getElementById("exp-progress");
-const levelDisplay = document.getElementById("level");
-const durationMap = {
-	easy: 1,
-	medium: 2,
-	hard: 4,
-	insane: 8
-};
-
-function difficultyIcon(level) {
-	return {
-		easy: '😋',
-		medium: '😰',
-		hard: '👹',
-		insane: '☠️'
-	}[level] || '';
-}
-
-function toggleQuestDetails(header) {
-	const card = header.closest(".quest");
-	const details = card.querySelector(".quest-details");
-	details.classList.toggle("hidden");
-}
-
-function toggleAddQuest() {
-	const addQuestForm = document.querySelector(".add-quest");
-	addQuestForm.classList.toggle("hidden");
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-	const questList = document.getElementById("quest-list");
-	const form = document.getElementById("quest-form");
-	const titleInput = document.getElementById("quest-title");
-	const descriptionInput = document.getElementById("quest-description");
-	const difficultyInput = document.getElementById("quest-difficulty");
-
-	// 🧠 Load saved quests
-	const savedQuests = JSON.parse(localStorage.getItem("quests")) || [];
-	savedQuests.forEach(({ id, title, description, difficulty }) => {
-		const questCard = createQuestCard(id, title, description, difficulty);
-		questList.appendChild(questCard);
-	});
-
-      // Load Scheduled Quests
-
-      const scheduled= JSON.parse(localStorage.getItem("schedule")) || [];
-      scheduled.forEach(({ slotId, title, difficulty }) => {
-
-            const [hour,day] = slotId.split("-");
+            function closeQuestForm() {
+                  document.getElementById('questFormOverlay').style.display = 'none';
             
-            const slot = document.querySelector(`.gantt-day[data-day="${day}"] .time-slot[data-hour="${hour}"]`);
-            if (slot && !slot.querySelector("quest-block")) {
-                  const block = document.createElement("div");
-                  block.classList.add("quest-block", difficulty);
-                  block.textContent = `${title} ${difficultyIcon(difficulty)}`;
-                  block.style.height = `${durationMap[difficulty] * 60}px`;
-                  slot.appendChild(block);
+            
+            }
+            
+            function closeForm() {
+                  document.getElementById('formOverlay').style.display = 'none';
 
             }
 
-      });
+            function saveNewQuest() {
+                  const title = document.getElementById('newQuestTitle').value
+                  const rawTasks = document.getElementById('newQuestTask').value;
 
+                  if (!title || !rawTasks) return alert("Please fill in all fields");
 
-      // Quest-tab logic
-      document.querySelectorAll(".tab-button").forEach(button => {
-            button.addEventListener("click", () => {
-                  const target = button.getAttribute("data-tab");
+                  const newQuest = {
+                        title,
+                        //Splits array of tasks by looking for a comma, splitting them and filtering them in an array
+                        tasks: rawTasks.split(',',).map(t => t.trim()).filter(Boolean)
+                  };
 
-                  document.querySelectorAll(".quest-tab").forEach(tab => {
-                        tab.classList.add("hidden");
-                  });
-                  document.getElementById(`tab-${target}`).classList.remove("hidden");
-            });
-      });
-
-      // Quest interjection
-      const projectQuestsKey = "project-quests-loaded";
-      if (!localStorage.getItem(projectQuestsKey)) {
-
-      // 🧠 Load project quests
-            const projectQuests = [
-            { id: "quest-p001", title: "Refactor Core System", description: "Restructure your QuestLog code into modular components for quests, skills, and XP tracking.", difficulty: "hard" },
-                  { id: "quest-p002", title: "Fix the Add Quest Form", description: "Get the quest form working perfectly, saving quests to localStorage and clearing inputs after submission.", difficulty: "medium" },
-                  { id: "quest-p003", title: "Rebuild the Gantt Schedule", description: "Fix the drag-and-drop scheduling system so quests can be assigned to dates again.", difficulty: "hard" },
-                  { id: "quest-p004", title: "Design Skill Tree System", description: "Draft out the structure of your skill tree: what feeds what? How does XP flow?", difficulty: "medium" },
-                  { id: "quest-p005", title: "Build Interactive Skill Tree", description: "Use SVG or Canvas to create a clickable skill tree that grows with your quest completion.", difficulty: "insane" },
-                  { id: "quest-p006", title: "Link Quests to Skill XP", description: "Each quest type should feed XP into its matching skill branch. Update dynamically.", difficulty: "medium" },
-                  { id: "quest-p007", title: "Summon the Quest Generator", description: "Use the OpenAI API to create an AI-powered quest generator based on your goals and timeline.", difficulty: "hard" },
-                  { id: "quest-p008", title: "Train the NPC Mentor", description: "Create a fantasy-themed mentor NPC (powered by GPT) that gives advice or drops random quests.", difficulty: "medium" },
-                  { id: "quest-p009", title: "Auto-Blog Completed Quests", description: "Create a function that turns completed quests into Markdown blog entries with tags and summaries.", difficulty: "hard" },
-                  { id: "quest-p010", title: "Weekly Progress Summary", description: "Summarize weekly quest XP and accomplishments into a publishable update.", difficulty: "medium" },
-                  { id: "quest-p011", title: "Final Boss: Deployment", description: "Deploy your new QuestLog to the web via Vercel/Netlify and write your launch blog post.", difficulty: "hard" }
-            ];
-
-            // Save project quests to localStorage
-            const saved = JSON.parse(localStorage.getItem("quests")) || [];
-            projectQuests.forEach(({ id, title, description, difficulty }) => {
-                  if (!saved.some(q => q.id === id)) {
-                        const questCard = createQuestCard(id, title, description, difficulty);
-                        document.getElementById("quest-list").appendChild(questCard);
-                        saved.push({ id, title, description, difficulty });
-                  }
-            });
-            localStorage.setItem("quests", JSON.stringify(saved));
-            localStorage.setItem(projectQuestsKey, "true");
+                  projects[currentProjectIndex].quests.push(newQuest);
+                  saveProjectsToLocal()
+                  closeQuestForm();
+                  loadQuests(currentProjectIndex);
+            };
 
             
 
-      }
 
-      const completedQuests = JSON.parse(localStorage.getItem("completedQuests")) || [];
-      completedQuests.forEach(({ id, title, description, difficulty }) => {
-            const questCard = createQuestCard(id, title, description, difficulty);
-            questCard.querySelector(".complete-button").textContent = "Quest Completed!";
-            questCard.querySelector(".complete-button").disabled = true;
-            questCard.classList.add("completed");
-            document.getElementById("completed-quests").appendChild(questCard);
-      });
+            function saveNewProject() {
+                  const title = document.getElementById('newProjectTitle').value;
+                  const desc = document.getElementById('newProjectDesc').value;
+                  const image = document.getElementById('newProjectImage').value;
 
+                  if (!title || !desc) return alert("Please fill all fields");
 
-
-
-	// ✅ Form submit (Add Quest)
-
-	form.addEventListener("submit", (e) => {
-		e.preventDefault();
-		const title = titleInput.value.trim();
-		const description = descriptionInput.value.trim();
-		const difficulty = difficultyInput.value;
-		if (!title || !description || !difficulty) return alert("Fill all fields.");
-
-		const id = `quest-${Date.now()}`;
-		const questCard = createQuestCard(id, title, description, difficulty);
-		questList.appendChild(questCard);
-
-		const stored = JSON.parse(localStorage.getItem("quests")) || [];
-		stored.push({ id, title, description, difficulty });
-		localStorage.setItem("quests", JSON.stringify(stored));
-
-		form.reset();
-	});
-
-	// ✏️ Edit / 🗑️ Delete Quest
-	questList.addEventListener("click", (e) => {
-		const questCard = e.target.closest(".quest");
-		if (!questCard) return;
-
-		const id = questCard.id;
-		let stored = JSON.parse(localStorage.getItem("quests")) || [];
-
-		// Edit
-		if (e.target.classList.contains("edit-button")) {
-			const questData = stored.find(q => q.id === id);
-			if (!questData) return;
-
-			titleInput.value = questData.title;
-			descriptionInput.value = questData.description;
-			difficultyInput.value = questData.difficulty;
-
-			questCard.remove();
-			stored = stored.filter(q => q.id !== id);
-			localStorage.setItem("quests", JSON.stringify(stored));
-		}
-
-		// Delete
-		if (e.target.classList.contains("delete-button")) {
-			questCard.remove();
-			stored = stored.filter(q => q.id !== id);
-			localStorage.setItem("quests", JSON.stringify(stored));
-		}
-	});
-
-	// 🧠 Complete Quest button logic
-	document.body.addEventListener("click", (e) => {
-		if (e.target.classList.contains("complete-button")) {
-			xp += 100;
-			if (xp >= (level + 1) * 300) {
-				level++;
-				levelDisplay.textContent = `LVL ${level}`;
-			}
-			const percent = (xp % 300) / 300 * 100;
-			expDisplay.style.width = `${percent}%`;
-			expDisplay.textContent = `${Math.floor(percent)}%`;
-
-                  const questCard = e.target.closest(".quest");
-			e.target.textContent = "Quest Completed!";
-			e.target.disabled = true;
-			e.target.parentElement.classList.add("completed");
-
-                  // Move to completed section
-                  document.getElementById("completed-quests").appendChild(questCard);
-
-                  //remove from active quests
-                  const completed = JSON.parse(localStorage.getItem("completed-quests")) || [];
-                  completed.push({ id, title, description, difficulty });
-                  localStorage.setItem("completedQuests", JSON.stringify(completed));
-
-
-                  const completedSection = document.getElementById("completed-quests");
-                  questCard.classlist.add("completed");
-                  questCard.querySelector("complete-button").textContent = "Quest Completed!";
-                  questCard.querySelector("complte-button").disabled = true;
-                  completedSection.appendChild(questCard);
-		}
-	});
-
-	// Quest-Schedule Blocks
-	document.querySelectorAll(".time-slot").forEach(slot => {
-
-            // 🧲 Setup Drag and Drop
-		slot.addEventListener("dragover", e => e.preventDefault());
-
+                  const newProject = {
+                  title,
+                  description: desc,
+                  image: image || 'https://via.placeholder.com/150x100?text=New+Project',
+                  quests: [],
                   
-		slot.addEventListener("drop", (e) => {
-			e.preventDefault();
-			const { questId, difficulty } = JSON.parse(e.dataTransfer.getData("application/json"));
-			const quest = document.getElementById(questId);
-			if (!quest) return;
+                  };
+                  projects.push(newProject)
+                  saveProjectsToLocal();
+                  closeForm();
+                  loadProjects();
+            }
+            
+            
+            // Track Quest
 
-			const title = quest.querySelector("h2").textContent;
-			const block = document.createElement("div");
-			block.classList.add("quest-block", difficulty);
+            let currentProjectIndex = null;
 
-                  block.innerHTML = `
-                        <span>${title} ${difficultyIcon(difficulty)}</span>
-                        <button class="remove-schedule" style="float:right; background:none; border:none; color:white; font-weight:bold; cursor:pointer;">✖️</button>
-                  `;
+            
+            function loadQuests(index) {
+                  const questList = document.getElementById('questList');
+                  questList.innerHTML = `<h2>${projects[index].title} Quests</h2>`;
+                  currentProjectIndex = index;
 
-			
-			block.style.height = `${durationMap[difficulty] * 60}px`;
+                  projects[index].quests.forEach((quest) => {
+                        const difficulty =  (quest.tasks.length <= 3) ? 'easy'
+                                          : (quest.tasks.length <= 7) ? 'medium'
+                                          : (quest.tasks.length <= 11) ? 'hard'
+                                          : 'insane';
+                        const questDiv = document.createElement('div');
+                        questDiv.className = 'quest-item';
+                        questDiv.onclick = () => questDiv.classList.toggle('active');
 
-			if (slot.querySelector(".quest-block")) {
-				alert("This time slot is already occupied!");
-				return;
-			}
-			slot.appendChild(block);
+                        const taskList = document.createElement('ul');
+                        taskList.className = 'quest-tasks';
 
-                  // Remove form local storage
-                  block.querySelector(".remove-schedule").addEventListener("click", () => {
-                        block.remove();
+                        const checkboxes = [];
 
-                        let schedule = JSON.parse(localStorage.getItem("schedule")) || [];
-                        const slotKey = slot.dataset.hour + "-" + slot.closest(".gantt-day")?.dataset.day;
-                        schedule = schedule.filter(s => s.slotId !== slotKey);
-                        localStorage.setItem("schedule", JSON.stringify(schedule));
+                        quest.tasks.forEach((task) => {
+                              const key = getTaskKey(projects[index].title, quest.title, task);
+                              const isDone = localStorage.getItem(key) === 'true';
+
+                              const li = document.createElement('li');
+                              li.className = isDone ? 'completed' : '';
+
+                              const checkbox = document.createElement('input');
+                              checkbox.type = 'checkbox';
+                              checkbox.className = 'task-check';
+                              checkbox.checked = isDone;
+                              checkbox.dataset.key = key;
+
+                              
+
+                              checkbox.addEventListener('click', (e) => {
+                                    e.stopPropagation(); 
+                              });
+
+                              checkbox.addEventListener('change', () => {
+                                    localStorage.setItem(key, checkbox.checked);
+                                    li.classList.toggle('completed', checkbox.checked);
+                                    updateCompleteButtonState();
+                              });
+
+                              li.appendChild(checkbox);
+                              li.append(" " + task);
+                              taskList.appendChild(li);
+                              checkboxes.push(checkbox);
+                        });
+
+                        const completeButton = document.createElement('button');
+                        completeButton.textContent = "✅ Complete Quest";
+                        completeButton.className = 'complete-quest-btn';
+                        completeButton.disabled = true;
+
+                        completeButton.addEventListener('click', (e) => {
+                              e.stopPropagation(); // ⛔ prevent quest toggle
+                              addXP(getXPByDifficulty(difficulty));
+                              alert(`Quest Complete! You earned ${getXPByDifficulty(difficulty)} XP!`);
+                              markQuestAsComplete(index, quest.title);
+                              loadQuests(currentProjectIndex);
+                        });
+
+
+                        function updateCompleteButtonState() {
+                              const allChecked = checkboxes.every(cb => cb.checked);
+                              completeButton.disabled = !allChecked;
+                        }
+
+                        updateCompleteButtonState(); // initial state check
+
+                        questDiv.innerHTML = `<strong>${quest.title}</strong>`;
+                        questDiv.appendChild(taskList);
+                        questDiv.appendChild(completeButton);
+                        questList.appendChild(questDiv);
                   });
 
-			// Save scheduled quest (optional enhancement)
-			const scheduled = JSON.parse(localStorage.getItem("schedule")) || [];
-			scheduled.push({
-				slotId: slot.dataset.hour + "-" + slot.closest(".gantt-day")?.dataset.day,
-				title,
-				difficulty
-			});
-			localStorage.setItem("schedule", JSON.stringify(scheduled));
-		});
-	});
-});
+                  // Add Quest Button
+                  const addQuestButton = document.createElement('div');
+                  addQuestButton.className = 'quest-item';
+                  addQuestButton.style.background = '#2c3e50';
+                  addQuestButton.innerHTML = '<strong>+ Add New Quest</strong>';
+                  addQuestButton.onclick = () => document.getElementById('questFormOverlay').style.display = 'flex';
+                  questList.appendChild(addQuestButton);
+            }
 
-// 🔧 Creates a quest card element
-function createQuestCard(id, title, description, difficulty) {
-	const card = document.createElement("div");
-	card.classList.add("quest");
-	card.dataset.difficulty = difficulty;
-	card.id = id;
+            function addQuestFromJSON(json) {
+                  try {
+                  
 
-      //adds HTML
+                  let quest = JSON.parse(json);
 
-	card.innerHTML = `
-		<div class="quest-header" onclick="toggleQuestDetails(this)">
-			<h2>${title}</h2>
-			<p class="description">${description}</p>
-		</div>
-		<span class="difficulty-badge" draggable="true" data-id="${id}" data-difficulty="${difficulty}">
-			${difficultyIcon(difficulty)}
-		</span>
-		<div class="quest-details hidden">
-			<span class="status">Upload Files: 0/3</span>
-			<span class="rewards">REWARDS: 100XP</span>
-			<div class="quest-actions">
-				<button class="edit-button" data-id="${id}">✏️ Edit</button>
-				<button class="delete-button" data-id="${id}">🗑️ Delete</button>
-				<button class="complete-button">Complete Quest</button>
-			</div>
-		</div>
-	`;
+                  // Handle nested { quest: { ... } } structure
+                  if (quest.quest) quest = quest.quest;
 
-      // Makes draggable
 
-	const badge = card.querySelector(".difficulty-badge");
-	badge.addEventListener("dragstart", (e) => {
-		e.dataTransfer.setData("application/json", JSON.stringify({
-			questId: id,
-			difficulty: difficulty
-		}));
-	});
+                  // Validate structure
 
-	return card;
-}
+                  console.log("Received quest object from GPT:", quest);
+
+                  if (!quest.title || !Array.isArray(quest.tasks)) {
+                        alert("Invalid Quest Format: Must include 'title' and 'tasks' array.");
+                        return;
+                  }
+
+                  // Use medium as fallback difficulty
+                  const validatedQuest = {
+                        title: quest.title,
+                        description: quest.description || "",
+                        difficulty: quest.difficulty || "medium",
+                        tasks: quest.tasks.map(t => t.trim()).filter(Boolean),
+                  };
+
+                  // Add to current project
+                  if (currentProjectIndex === null) {
+                        let defaultIndex = projects.findIndex(p => p.title === "QuestBot's Log");
+                        
+                        if (defaultIndex === -1) {
+                              // Create QuestBot's Log if it doesn't exist
+                              const newProject = {
+                                    title: "QuestBot's Log",
+                                    description: "Auto-generated quests from your AI assistant.",
+                                    image: "https://via.placeholder.com/150x100?text=QuestBot",
+                                    quests: []
+                              };
+                              projects.push(newProject);
+                              saveProjectsToLocal();
+                              loadProjects();
+                              defaultIndex = projects.length - 1;
+                        }
+
+                        currentProjectIndex = defaultIndex;
+                  }
+
+                  projects[currentProjectIndex].quests.push(validatedQuest);
+                  saveProjectsToLocal();
+                  loadQuests(currentProjectIndex);
+
+                  alert(`Quest "${validatedQuest.title}" added!`);
+                  } catch (e) {
+                  alert("Failed to parse JSON. Check your syntax.");
+                  console.error(e);
+                  }
+            }
+
+            function addProjectFromJSON(json) {
+                  try {
+                  const project = JSON.parse(json);
+
+                  if (!project.title || !project.description) {
+                        alert("Invalid Project JSON: Must include 'title' and 'description'");
+                        return;
+                  }
+
+                  const newProject = {
+                        title: project.title,
+                        description: project.description,
+                        image: project.image || 'https://via.placeholder.com/150x100?text=New+Project',
+                        quests: [],
+                  };
+
+                  projects.push(newProject);
+                  saveProjectsToLocal();
+                  loadProjects();
+                  closeForm();
+
+                  alert(`Project "${newProject.title}" added!`);
+                  } catch (e) {
+                  alert("Failed to parse project JSON.");
+                  console.error(e);
+                  }
+            }
+
+
+
+
+            function markQuestAsComplete() {
+                  const quests = JSON.parse(localStorage.getItem("quests")) || [];
+                  const completed = JSON.parse(localStorage.getItem("completedQuests")) || [];
+                  const quest = quests.find(q => q.id === questId);
+
+
+                  
+                  if (quest) {
+                        completed.push(quest);
+                        localStorage.setItem("completedQuests", JSON.stringify(completed));
+
+                        const updated = quests.filter(q => q.id !== questId);
+                        localStorage.setItem("quests", JSON.stringify(updated));
+                  }
+                  
+                  addXP(getXPByDifficulty(currentTask.difficulty))
+            }
+            // Projects section
+            const projects = [];
+
+
+            
+
+            function getProjects() {
+                  const stored = localStorage.getItem('projects');
+                  if (stored) {
+                        try {
+                              return JSON.parse(stored);
+                        } catch (e) {
+                              console.error("failed to load saved projects");
+                        }
+                        
+                  }
+                  
+                  return [];
+            }
+            
+            
+            function getTaskKey(project, quest ,task) {
+                  return `${project}::${quest}::${task}`;
+            }
+            function loadProjects() {
+                  const container = document.getElementById('categoryList');
+                  container.innerHTML = '';
+                  projects.forEach((project, index) => {
+                  const card = document.createElement('div');
+                  card.className = 'project-tab';
+                  card.innerHTML = `
+                        <img src="${project.image}" alt="${project.title}" class="project-image" />
+                        <h3>${project.title}</h3>
+                        <p>${project.description}</p>
+                        `;
+                  card.onclick = () => loadQuests(index);
+                  container.appendChild(card);
+                  });
+                  const addButton = document.createElement('div');
+                  addButton.className = 'project-tab';
+                  addButton.innerHTML = '<strong>+ Add New Project</strong>';
+                  addButton.onclick = () => document.getElementById('formOverlay').style.display = 'flex';
+                  container.appendChild(addButton);
+            }
+            
+            // Local Storage for Quests
+            function saveProjectsToLocal() {
+                  localStorage.setItem('projects', JSON.stringify(projects));
+            }
+
+            function loadProjectsFromLocal() {
+            const stored = localStorage.getItem('projects');
+            if (stored) {
+                  try {
+                        const parsed = JSON.parse(stored);
+                        projects.length = 0;
+                        parsed.forEach(p => projects.push(p));
+                  } catch (e) {
+                        console.error("Failed to load projects:", e);
+                  }
+            }
+            }
+
+            // XP Tracker
+            function getXP() {
+                  return parseInt(localStorage.getItem('totalXP') || '0', 10);
+            }
+
+            function addXP(amount) {
+                  let xp = parseInt(localStorage.getItem("totalXP") || "0");
+                  xp += amount;
+                  localStorage.setItem("totalXP", xp);
+
+                  updateXPBar();
+
+            }
+
+
+            function updateXPBar() {
+                  const xp = getXP();
+                  const level = Math.floor(xp / 300); // correct logic
+                  const percent = (xp % 300) / 300 * 100;
+
+                  document.getElementById('exp-progress').style.width = `${percent}%`;
+                  document.getElementById('exp-progress').textContent = `${Math.floor(percent)}%`;
+                  document.getElementById('level').textContent = `LVL ${level}`;
+            }
+
+
+            function getXPByDifficulty(difficulty) {
+                  return{
+                        easy: 100,
+                        medium: 500,
+                        hard: 1000,
+                        insane: 10000,
+                  }[difficulty] || 0;
+            }
+
+            
+
+            
+            // Load Projects on Page Start      
+
+            window.onload = () => {
+                  const loaded = getProjects();
+                  projects.push(...loaded);
+                  loadProjects();
+                  updateXPBar();
+            };
+
+            // Focus Task Queue
+
+            let currentTask = null;
+            let taskQueue = [];
+
+            function loadTaskQueue() {
+                  const quests = JSON.parse(localStorage.getItem("quests")) || [];
+                  const completed = JSON.parse(localStorage.getItem("completedQuests")) || [];
+                  const completedIDs = new Set(completed.map(q => q.id));
+
+                  taskQueue = [];
+                  quests.forEach(q => {
+                        if (!completedIDs.has(q.id)) {
+                              const subtasks = q.description.split(/[,\n]/).map(t => t.trim()).filter(Boolean);
+                              subtasks.forEach(task => {
+                                    taskQueue.push({ questTitle: q.title, task, id: q.id, difficulty: q.difficulty });
+                              });
+                        }
+                  });
+            }
+            
+            function showNextTask() {
+                  if (taskQueue.length === 0) {
+                        loadTaskQueue();
+                  }
+
+                  currentTask = taskQueue.shift();
+
+                  if (!currentTask) {
+                        document.getElementById("taskDisplay").classList.add("hidden");
+                        alert("🎉 All tasks complete!");
+                        return;
+                  }
+
+                  document.getElementById("currentQuestTitle").textContent = currentTask.questTitle;
+                  document.getElementById("currentTaskText").textContent = currentTask.task;
+                  document.getElementById("taskDisplay").classList.remove("hidden");
+            }
+
+            function completeCurrentTask() {
+                  addXP(getXPByDifficulty(currentTask.difficulty))
+                  showNextTask();
+            }
+
+            function skipCurrentTask() {
+                  taskQueue.push(currentTask);
+                  showNextTask();
+            }
+
+            // AI 
+
+            /* document.getElementById("toggleAIButton").addEventListener("click", () => {
+                  const sidebar = document.getElementById("categoryList");
+                  const chat = document.getElementById("aiChatPanel");
+
+                  sidebar.classList.toggle("hidden");
+                  chat.classList.toggle("hidden");
+            }); 
+            */
+            let questChat = [];
+            let replyCount = 0;
+
+            async function sendAIMessage() {
+                  const input = document.getElementById("chatInput");
+                  const chatLog = document.getElementById("chatLog");
+                  const userMessage = input.value.trim();
+                  const selectedPersonality = document.getElementById("personalitySelect")?.value || "wizard";
+
+                  if (!userMessage) return;
+
+                  
+
+
+                  // Show user's message
+                  chatLog.innerHTML += `<div><strong>You:</strong> ${userMessage}</div>`;
+                  questChat.push({ role: "user", content: userMessage });
+                  input.value = "";
+                  replyCount++;
+
+                  const isFinal = replyCount >= 3;
+
+
+                  // Call OpenAI
+                  try {
+                        console.log("🧪 Sending to QuestBot:", {
+                              messages: questChat,
+                              personality: selectedPersonality
+                        });
+                        const response = await fetch("http://localhost:5001/questbot", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                    messages: questChat,
+                                    personality: selectedPersonality,
+                                    ready_for_quest: isFinal,
+                              })
+                        });
+
+                        const data = await response.json();
+                        const reply = data.reply;
+
+                        // Console Log Test Case
+
+                        chatLog.innerHTML += `<div><strong>QuestBot:</strong><pre style="background:#222; padding:0.5rem; color:#4CAF50;">${reply}</pre></div>`;
+                        chatLog.scrollTop = chatLog.scrollHeight;
+
+                        questChat.push({ role: "assistant", content: reply });
+
+                        // Try parsing and adding quest
+
+                        if (isFinal) {
+                              
+                              const jsonStart = reply.indexOf("{");
+                              const jsonEnd = reply.lastIndexOf("}");
+
+                              if (jsonStart !== -1 && jsonEnd !== -1) {
+                                    const jsonText = reply.slice(jsonStart, jsonEnd + 1);
+                                    try {
+                                          const quest = JSON.parse(jsonText);
+                                          addQuestFromJSON(quest);
+                                          replyCount = 0;
+                                          questChat = [];
+                                    } catch (e) {
+                                          console.error("❌ JSON parsing failed:", e);
+                                    }
+                              } else {
+                                    console.warn("⚠️ No JSON block found in reply.");
+                              }
+                        }
+
+                        chatLog.scrollTop = chatLog.scrollHeight;
+                        
+                        
+
+
+
+                  } catch (error) {
+                        console.error("Error calling OpenAI:", error);
+                        chatLog.innerHTML += `<div style="color:red;">❌ Error reaching GPT API</div>`;
+                  }
+
+
+                  input.focus();
+
+                  // Select Personality
+                  
+
+            }
+
+            
+
+
+
+            

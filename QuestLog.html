@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>QuestLog</title>
+      <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+      <section id="hero">
+            <div id="stats">
+                  <h2 id="username">JUSTICE</h2>
+                  <h3 id="level">LVL 0</h3>
+                  <div id="exp-bar">
+                        <div id="exp-progress" style="width: 0%;">0%</div>
+                  </div>
+            </div>
+
+            <h1>QuestLog</h1>
+            <p>"The journey of 1,000 steps begins with the first one"</p>
+      </section>
+
+
+      <div class="quest-ui">
+
+            
+
+            <aside class="sidebar" id="categoryList">
+                  <!-- Project Tabs -->
+            </aside>
+
+            
+
+
+            <main class="quest-list" id="questList">
+                  <!-- <button id="toggleAIButton" style="position: absolute; top: 20px; right: 20px; z-index: 1001;">
+                        🤖 Chat with QuestBot
+                  </button> 
+                  -->
+
+                  <h2>Select a project to view its quests</h2>
+            </main>
+
+           <aside class="sidebar " id="aiChatPanel">
+                  <h3>🤖 QuestBot</h3>
+                  <div id="chatLog" style="height: 70vh; overflow-y: auto; border: 1px solid #444; padding: 0.5rem; background: #0f1f3a;"></div>
+                  <textarea id="chatInput" placeholder="Tell me your goal..." style="width: 100%; margin-top: 10px;"></textarea>
+                  <button onclick="sendAIMessage()">Send</button>
+
+                  <select id="personalitySelect">
+                        <option value="wizard">🧙 Wizard</option>
+                        <option value="bard">🎸 Bard</option>
+                        <option value="rogue">🗡️ Rogue</option>
+                        <option value="commander">🛠 Commander</option>
+                  </select>
+
+            </aside>
+
+            <!-- Add Quest Tab-->
+            <div id="questFormOverlay" class="formOverlay" style="display: none;">
+                  <div id="formBox">
+                        <h2>Add New Quest</h2>
+
+                        <!-- Manual Entry -->
+                        <label>Quest title:<br><input type="text" id="newQuestTitle"></label><br>
+                        <label>Tasks (comma-separated):<br><input type="text" id="newQuestTask"></label><br>
+                        <button onclick="saveNewQuest()">Save</button>
+                        <hr style="margin: 1rem 0; border: 1px solid #334;">
+
+                        <!-- JSON Importer -->
+                        <h3>Or paste quest JSON</h3>
+                        <textarea id="questJSONInput" rows="6" style="width: 100%; margin-bottom: 0.5rem;"></textarea>
+                        <button onclick="addQuestFromJSON(document.getElementById('questJSONInput').value)">➕ Add via JSON</button>
+
+                        <!-- Close -->
+                        <br><br>
+                        <button onclick="closeQuestForm()">Cancel</button>
+                  </div>
+            </div>
+
+            <div id="formOverlay" class="formOverlay" style="display: none;">
+                  <div id="formBox">
+                        <h2>Add New Project</h2>
+
+                        <!-- Manual Form -->
+                        <label>Project Title:<br><input type="text" id="newProjectTitle"></label><br>
+                        <label>Description:<br><input type="text" id="newProjectDesc"></label><br>
+                        <label>Image URL:<br><input type="text" id="newProjectImage" placeholder="https://..."></label><br>
+                        <button onclick="saveNewProject()">Save</button>
+
+                        <hr style="margin: 1rem 0; border: 1px solid #334;">
+
+                        <!-- JSON Importer -->
+                        <h3>Or paste project JSON</h3>
+                        <textarea id="projectJSONInput" rows="6" style="width: 100%; margin-bottom: 0.5rem;"></textarea>
+                        <button onclick="addProjectFromJSON(document.getElementById('projectJSONInput').value)">➕ Add via JSON</button>
+
+                        <br><br>
+                        <button onclick="closeForm()">Cancel</button>
+                  </div>
+            </div>
+
+
+
+      <script src="script.js"></script>
+
+</body>
+</html>
