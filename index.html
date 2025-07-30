@@ -1,224 +1,317 @@
-<!DOCTYPE html>
-<html lang="en">
-
 <head>
       <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
       <title>QuestLog</title>
       <link rel="stylesheet" href="style.css" />
 </head>
 
-<body>
-      <header>
+<!-- navbar.html -->
 
-            <section id="hero">
-                  <div id="stats">
-                        <h2 id="username">JUSTICE</h2>
-                        <h3 id="level">LVL 0</h3>
-                        <div id="exp-bar">
-                              <div id="exp-progress" style="width: 0%;">0%</div>
+<nav class="navbar">
+  <div class="navbar-left">
+    <h1 class="logo">QuestLog</h1>
+    <span id="username">JUSTICE</span>
+  </div>
+  <div class="navbar-center" id="xpSection">
+    <div id="exp-bar">
+      <div id="exp-progress" style="width: 0%;">0%</div>
+      <span id="level">LVL 0</span>
+    </div>
+  </div>
+  <div class="navbar-right">
+    <ul class="nav-links">
+      <li data-view="quests">🗺️ Quests</li>
+      <li data-view="chat">🤖 Chat</li>
+      <li data-view="projects">📁 Projects</li>
+      <li data-view="start" class="settings-nav">☰</li>
+    </ul>
+  </div>
+</nav>
+
+<!-- startScreen.html -->
+<section id="startScreen">
+      <div class="overlay"></div>
+
+      <div class="start-content">
+            <h1>Justice's Quest Log</h1>
+
+            <div class="data-summary" id="dataSummary">
+                  <h3>📊 Current Progress</h3>
+                  <div class="summary-stats">
+                        <div class="stat-item">
+                              <span class="stat-number" id="statProjects">0</span>
+                              <span class="stat-label">Projects</span>
+                        </div>
+                        <div class="stat-item">
+                              <span class="stat-number" id="statQuests">0</span>
+                              <span class="stat-label">Quests</span>
+                        </div>
+                        <div class="stat-item">
+                              <span class="stat-number" id="statTasks">0</span>
+                              <span class="stat-label">Tasks</span>
+                        </div>
+                        <div class="stat-item">
+                              <span class="stat-number" id="statLevel">0</span>
+                              <span class="stat-label">Level</span>
                         </div>
                   </div>
-
-                  <h1>QuestLog</h1>
-                  <p>"The journey of 1,000 steps begins with the first one"</p>
-            </section>
-
-            
-
-            
-      </header>
-
-      <main>
-            
-
-            <div class="main-grid">
-                  
-                  <section id="quests">
-                        <div>
-                              <h2>Quests</h2>
-                              <p>Complete quests to earn XP and level up!</p>
-                        </div>
-                        
-                        <div class="quest-tabs">
-                              <button id="active-quests-button" onclick="toggleQuests()">📜 Active Quests</button>
-                              <button id="add-quest-button" onclick="toggleAddQuest()">+ Add Quest</button>
-                              <button id="completed-quests-button" onclick="toggleCompletedQuests()">✅ Completed</button>
-                        </div>
-
-                        <div id="add-quest" class="quest-tab hidden">
-                              
-                              <h3>Add New Quest</h3>
-                              <form id="quest-form">
-                                    <input type="text" id="quest-title" placeholder="Quest Title" required />
-                                    <textarea id="quest-description" placeholder="Quest Description" required></textarea>
-                                    
-                                    <select id="quest-difficulty" required>
-                                          <option value="" disabled selected>Select Difficulty</option>
-                                          <option value="easy">😋</option>
-                                          <option value="medium">😰</option>
-                                          <option value="hard">👹</option>
-                                          <option value="legendary">☠️</option>
-                                    </select>
-                                    <button type="submit">Add Quest</button>
-                              </form>
-                        </div>
-
-                        <div id="tab-active" class="quest-tab">
-                              <h3 id="active-quests-title">Active Quests</h3>
-                              <div id="quest-list"></div>
-                        </div>
-
-
-                        <div id="tab-completed" class="quest-tab hidden">
-                              <h3 id="completed-quests-title">Completed Quests</h3>
-                              <div id="completed-quest-list" class="quest-zone completed-zone"></div>
-                        </div>
-
-
-                        
-                  </section>
-
-                  <section id="schedule">
-                        <h2>Weekly Schedule</h2>
-
-                        <div class="gantt-container">
-                              <aside class="priject-sidebar">
-                                    <div class="project-tab">⚙️ Web Dev Site</div>
-                                    <div class="project-tab">Electric Skateboard</div>
-                                    <div class="project-tab">Quest Log</div>
-                                    <div class="project-tab">Magic Mirror</div>
-
-                              </aside>
-                              
-
-                        </div>
-                        <div class="gantt-container">
-                              
-
-                              <div class="gantt-header">
-                                    
-                                    <div class="gantt-day">Mon</div>
-                                    <div class="gantt-day">Tue</div>
-                                    <div class="gantt-day">Wed</div>
-                                    <div class="gantt-day">Thu</div>
-                                    <div class="gantt-day">Fri</div>
-                                    
-                              </div>
-                              <div class="gantt-body">
-                                    
-                                    <div class="gantt-time-column">
-                                          <div class="gantt-time">8:00 AM</div>
-                                          <div class="gantt-time">9:00 AM</div>
-                                          <div class="gantt-time">10:00 AM</div>
-                                          <div class="gantt-time">11:00 AM</div>
-                                          <div class="gantt-time">12:00 PM</div>
-                                          <div class="gantt-time">1:00 PM</div>
-                                          <div class="gantt-time">2:00 PM</div>
-                                          <div class="gantt-time">3:00 PM</div>
-                                          <div class="gantt-time">4:00 PM</div>
-                                          <div class="gantt-time">5:00 PM</div>
-                                          <div class="gantt-time">6:00 PM</div>
-                                          <div class="gantt-time">7:00 PM</div>
-                                          <div class="gantt-time">8:00 PM</div>
-                                    </div>
-
-                                    <div class="gantt-week">
-                                          
-                                          <div class="gantt-day" data-day="mon">
-                                                
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
-
-                                          <div class="gantt-day" data-day="tue">
-                                                
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
-                                                
-                                          <div class="gantt-day" data-day="wed">
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
-                                          <div class="gantt-day" data-day="thu">
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
-                                          <div class="gantt-day" data-day="fri">
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
-                                         
-                                    </div>
-
-                                    
-                              </div>
-
-                              
-                        </div>
-                  </section>
             </div>
-      </main>
-
-      <script src="script.js"></script>
-
-</body>
 
 
-</html>
+
+            <div class="start-buttons">
+                  <button id="startBtn"><p>Start Game</p></button>
+                  <button id="loadBtn">Load Game</button>
+                  <button id="saveBtn">Save Game</button>
+            </div>
+      </div>
+</section>
+
+<!-- questsScreen.html -->
+<section id="questsScreen">
+  <h2 class="section-title">Quests</h2>
+  <div class="quests-layout">
+    <!-- Memory Panel -->
+    <aside class="memory-panel" id="memoryPanel">
+      <h3>💭 Memory</h3>
+      <div class="memory-content" id="memoryContent">
+        <div class="memory-item">
+          <strong>Recent Actions:</strong>
+          <ul id="recentActions">
+            <li>No recent actions</li>
+          </ul>
+        </div>
+        <div class="memory-item">
+          <strong>Quick Notes:</strong>
+          <textarea id="quickNotes" placeholder="Add your notes here..." rows="4"></textarea>
+        </div>
+        <div class="memory-item">
+          <strong>Current Focus:</strong>
+          <div id="currentFocus">No active focus</div>
+        </div>
+      </div>
+    </aside>
+    <!-- Projects Sidebar -->
+    <aside class="sidebar" id="projectList">
+      <!-- Project tabs injected here -->
+    </aside>
+    <!-- Quest List Center -->
+    <main class="quest-list" id="questList">
+      <h3>Select a project to view its quests</h3>
+      <!-- Quests injected here -->
+    </main>
+  </div>
+</section>
+
+
+
+<section id="chatScreen">
+  <h2 class="section-title">Chat</h2>
+  <div class="chat-layout">
+    <!-- Memory Panel -->
+    <aside class="memory-panel" id="chatMemoryPanel">
+      <h3>💭 Chat Memory</h3>
+      <div class="memory-content" id="chatMemoryContent">
+        <div class="memory-item">
+          <strong>Conversation History:</strong>
+          <div id="conversationSummary">No recent conversations</div>
+        </div>
+        <div class="memory-item">
+          <strong>Context Notes:</strong>
+          <textarea id="contextNotes" placeholder="Important context..." rows="3"></textarea>
+        </div>
+        <div class="memory-item">
+          <strong>AI Personality:</strong>
+          <select id="aiPersonality">
+            <option value="helpful">Helpful Assistant</option>
+            <option value="mentor">Wise Mentor</option>
+            <option value="friend">Casual Friend</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+    <div class="chat-container">
+              <h1>QuestBot Chat</h1>
+        <div id="chatMessages"></div>
+
+              <div class="chat-input-area">
+                    <textarea id="chatInput" placeholder="Type your message..."></textarea>
+                    <button id="chatSendBtn">Send</button>
+              </div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- projectsScreen.html -->
+<section id="projectsScreen">
+  <h2 class="section-title">Projects</h2>
+      <div class="projects-toolbar">
+            <h2 class="gallery-title">Project Gallery</h2>
+            <div class="sort-controls">
+                  <label for="sortBy">Sort by:</label>
+                  <select id="sortBy" onchange="sortProjects()">
+                        <option value="name">📝 Name</option>
+                        <option value="completed">✅ Progress</option>
+                        <option value="skill">🎯 Skills</option>
+                        <option value="date">📅 Date</option>
+                        <option value="difficulty">⚡ Difficulty</option>
+                  </select>
+                  <button id="sortOrder" onclick="toggleSortOrder()" title="Toggle sort order">↑</button>
+            </div>
+      </div>
+      <div class="skill-filter-bar" id="skillFilterBar">
+            <div class="skill-filter-title">Filter by Skills:</div>
+            <div class="skill-filter-tags" id="skillFilterTags">
+                  <!-- Skill filter tags will be dynamically generated -->
+            </div>
+            <button class="clear-filters-btn" id="clearFiltersBtn" onclick="clearSkillFilters()">Clear All</button>
+      </div>
+      <div class="project-gallery" id="projectGallery">
+      <!-- Cards injected via JS -->
+      </div>
+</section>
+
+<!-- Form Overlays -->
+<div id="formOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+  <div style="background: var(--color-bg-light); padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+    <h3 style="color: var(--color-primary); margin-bottom: 1.5rem;">Add New Project</h3>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Project Title:</label>
+      <input type="text" id="newProjectTitle" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text);">
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Category:</label>
+      <select id="newProjectCategory" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text);">
+        <option value="3D Printing">🖨️ 3D Printing</option>
+        <option value="Python">🐍 Python</option>
+        <option value="Web Development">🌐 Web Development</option>
+        <option value="Mechanics/Electrical">⚙️ Mechanics/Electrical</option>
+        <option value="Robotics/IoT">🔋 Robotics/IoT</option>
+        <option value="Other">📁 Other</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Project Type:</label>
+      <select id="newProjectType" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text);">
+        <option value="project">💼 Project</option>
+        <option value="media">📸 Media/Gallery</option>
+        <option value="blog">📝 Blog Post</option>
+        <option value="experiment">🧪 Experimental Data</option>
+        <option value="documentation">📚 Documentation</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Description:</label>
+      <textarea id="newProjectDesc" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text); min-height: 100px; resize: vertical;"></textarea>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Skills/Technologies (comma-separated):</label>
+      <input type="text" id="newProjectSkills" placeholder="Python, JavaScript, 3D Printing, Electronics..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text);">
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Image URL:</label>
+      <input type="url" id="newProjectImage" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text);">
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">External Links (optional):</label>
+      <input type="url" id="newProjectLinks" placeholder="GitHub, Demo, Documentation..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text);">
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+      <button onclick="closeForm()" style="padding: 0.75rem 1.5rem; background: var(--color-accent); border: none; border-radius: 6px; color: var(--color-text); cursor: pointer;">Cancel</button>
+      <button onclick="saveNewProject()" style="padding: 0.75rem 1.5rem; background: var(--color-primary); border: none; border-radius: 6px; color: white; cursor: pointer;">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<div id="questFormOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+  <div style="background: var(--color-bg-light); padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+    <h3 style="color: var(--color-primary); margin-bottom: 1.5rem;">Add New Quest</h3>
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Quest Title:</label>
+      <input type="text" id="newQuestTitle" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text);">
+    </div>
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Description:</label>
+      <textarea id="newQuestDescription" style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text); min-height: 80px; resize: vertical;"></textarea>
+    </div>
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Tasks (comma-separated):</label>
+      <textarea id="newQuestTask" placeholder="Task 1, Task 2, Task 3..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text); min-height: 100px; resize: vertical;"></textarea>
+    </div>
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Skills (comma-separated, optional):</label>
+      <input type="text" id="newQuestSkills" placeholder="Python, JavaScript, Design..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text);">
+    </div>
+    <div style="margin-bottom: 1.5rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Rewards (comma-separated, optional):</label>
+      <input type="text" id="newQuestRewards" placeholder="XP, Achievement, Badge..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text);">
+    </div>
+    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+      <button onclick="closeQuestForm()" style="padding: 0.75rem 1.5rem; background: var(--color-accent); border: none; border-radius: 6px; color: var(--color-text); cursor: pointer;">Cancel</button>
+      <button onclick="saveNewQuest()" style="padding: 0.75rem 1.5rem; background: var(--color-primary); border: none; border-radius: 6px; color: white; cursor: pointer;">Save Quest</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save Game Modal -->
+<div id="saveModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+  <div style="background: var(--color-bg-light); padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+    <h3 style="color: var(--color-primary); margin-bottom: 1.5rem;">💾 Save Game Data</h3>
+
+    <div style="margin-bottom: 1rem;">
+      <button id="copyToClipboardBtn" style="width: 100%; padding: 1rem; background: var(--color-primary); border: none; border-radius: 6px; color: white; cursor: pointer; margin-bottom: 1rem;">
+        📋 Copy to Clipboard
+      </button>
+      <button id="downloadBackupBtnModal" style="width: 100%; padding: 1rem; background: var(--color-accent); border: none; border-radius: 6px; color: white; cursor: pointer; margin-bottom: 1rem;">
+        📁 Download Backup File
+      </button>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Backup Data (JSON):</label>
+      <textarea id="saveDataTextarea" readonly style="width: 100%; height: 200px; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text); font-family: monospace; font-size: 0.8rem; resize: vertical;"></textarea>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+      <button onclick="closeSaveModal()" style="padding: 0.75rem 1.5rem; background: var(--color-accent); border: none; border-radius: 6px; color: var(--color-text); cursor: pointer;">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load Game Modal -->
+<div id="loadModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center;">
+  <div style="background: var(--color-bg-light); padding: 2rem; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+    <h3 style="color: var(--color-primary); margin-bottom: 1.5rem;">📤 Load Game Data</h3>
+
+    <div style="margin-bottom: 1rem;">
+      <button id="loadFromFileBtn" style="width: 100%; padding: 1rem; background: var(--color-primary); border: none; border-radius: 6px; color: white; cursor: pointer; margin-bottom: 1rem;">
+        📁 Load from File
+      </button>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text);">Paste JSON Data:</label>
+      <textarea id="loadDataTextarea" placeholder="Paste your backup JSON data here..." style="width: 100%; height: 200px; padding: 0.75rem; border: 1px solid var(--color-accent); border-radius: 6px; background: var(--color-bg); color: var(--color-text); font-family: monospace; font-size: 0.8rem; resize: vertical;"></textarea>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+      <button onclick="closeLoadModal()" style="padding: 0.75rem 1.5rem; background: var(--color-accent); border: none; border-radius: 6px; color: var(--color-text); cursor: pointer;">Cancel</button>
+      <button onclick="loadFromTextarea()" style="padding: 0.75rem 1.5rem; background: var(--color-primary); border: none; border-radius: 6px; color: white; cursor: pointer;">Load Data</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="hiddenFileInput" accept=".json" style="display: none;">
+
+<script src="export-functions.js"></script>
+<script src="script.js"></script>
