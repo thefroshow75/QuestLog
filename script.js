@@ -166,6 +166,45 @@ window.onload = () => {
       }
 };
 
+/* ----------------------------------
+4. 💬 ChatBot Functions (QuestBotMK2)
+---------------------------------- */
+// Basic chat initialization and message handling
+function initializeChat() {
+      const chatMessages = document.getElementById('chatMessages');
+      // Only add welcome message once
+      if (chatMessages && chatMessages.children.length === 0) {
+            const welcome = document.createElement('div');
+            welcome.className = 'message bot';
+            welcome.textContent = '🤖 Welcome to QuestBot!';
+            chatMessages.appendChild(welcome);
+      }
+}
+
+function sendAIMessage() {
+      const chatInput = document.getElementById('chatInput');
+      const chatMessages = document.getElementById('chatMessages');
+      if (!chatInput || !chatMessages) return;
+
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      // Append user's message
+      const userMessage = document.createElement('div');
+      userMessage.className = 'message user';
+      userMessage.textContent = text;
+      chatMessages.appendChild(userMessage);
+
+      // Placeholder bot response
+      const botMessage = document.createElement('div');
+      botMessage.className = 'message bot';
+      botMessage.textContent = '🤖 QuestBot is listening...';
+      chatMessages.appendChild(botMessage);
+
+      chatInput.value = '';
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
 // Save Modal Functions
 function showSaveModal() {
       saveAllDataToLocal(); // Save to localStorage first
