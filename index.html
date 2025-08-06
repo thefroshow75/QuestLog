@@ -25,8 +25,37 @@
       <li data-view="projects">📁 Projects</li>
       <li data-view="start" class="settings-nav">☰</li>
     </ul>
+    <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
   </div>
 </nav>
+
+<!-- Mobile Navigation Overlay -->
+<div id="mobileNavOverlay" class="mobile-nav-overlay">
+  <div class="mobile-nav-content">
+    <div class="mobile-nav-header">
+      <h3>QuestLog</h3>
+      <button class="mobile-nav-close" id="mobileNavClose">✕</button>
+    </div>
+
+    <!-- XP Info in Mobile Menu -->
+    <div class="mobile-xp-section">
+      <div class="mobile-user-info">
+        <span id="mobileUsername">JUSTICE</span>
+        <span id="mobileLevel">LVL 0</span>
+      </div>
+      <div class="mobile-xp-bar">
+        <div id="mobileExpProgress" style="width: 0%;">0%</div>
+      </div>
+    </div>
+
+    <div class="mobile-nav-links">
+      <div class="mobile-nav-link" data-view="quests">🗺️ Quests</div>
+      <div class="mobile-nav-link" data-view="chat">🤖 Chat</div>
+      <div class="mobile-nav-link" data-view="projects">📁 Projects</div>
+      <div class="mobile-nav-link" data-view="start">⚙️ Settings</div>
+    </div>
+  </div>
+</div>
 
 <!-- startScreen.html -->
 <section id="startScreen">
@@ -71,26 +100,6 @@
 <section id="questsScreen">
   <h2 class="section-title">Quests</h2>
   <div class="quests-layout">
-    <!-- Memory Panel -->
-    <aside class="memory-panel" id="memoryPanel">
-      <h3>💭 Memory</h3>
-      <div class="memory-content" id="memoryContent">
-        <div class="memory-item">
-          <strong>Recent Actions:</strong>
-          <ul id="recentActions">
-            <li>No recent actions</li>
-          </ul>
-        </div>
-        <div class="memory-item">
-          <strong>Quick Notes:</strong>
-          <textarea id="quickNotes" placeholder="Add your notes here..." rows="4"></textarea>
-        </div>
-        <div class="memory-item">
-          <strong>Current Focus:</strong>
-          <div id="currentFocus">No active focus</div>
-        </div>
-      </div>
-    </aside>
     <!-- Projects Sidebar -->
     <aside class="sidebar" id="projectList">
       <!-- Project tabs injected here -->
@@ -107,38 +116,14 @@
 
 <section id="chatScreen">
   <h2 class="section-title">Chat</h2>
-  <div class="chat-layout">
-    <!-- Memory Panel -->
-    <aside class="memory-panel" id="chatMemoryPanel">
-      <h3>💭 Chat Memory</h3>
-      <div class="memory-content" id="chatMemoryContent">
-        <div class="memory-item">
-          <strong>Conversation History:</strong>
-          <div id="conversationSummary">No recent conversations</div>
-        </div>
-        <div class="memory-item">
-          <strong>Context Notes:</strong>
-          <textarea id="contextNotes" placeholder="Important context..." rows="3"></textarea>
-        </div>
-        <div class="memory-item">
-          <strong>AI Personality:</strong>
-          <select id="aiPersonality">
-            <option value="helpful">Helpful Assistant</option>
-            <option value="mentor">Wise Mentor</option>
-            <option value="friend">Casual Friend</option>
-          </select>
-        </div>
-      </div>
-    </aside>
-    <div class="chat-container">
-              <h1>QuestBot Chat</h1>
-        <div id="chatMessages"></div>
+  <div class="chat-container">
+        <h1>QuestBot Chat</h1>
+    <div id="chatMessages"></div>
 
-              <div class="chat-input-area">
-                    <textarea id="chatInput" placeholder="Type your message..."></textarea>
-                    <button id="chatSendBtn">Send</button>
-              </div>
-    </div>
+        <div class="chat-input-area">
+              <textarea id="chatInput" placeholder="Type your message..."></textarea>
+              <button id="chatSendBtn">Send</button>
+        </div>
   </div>
 </section>
 
@@ -153,7 +138,7 @@
                   <label for="sortBy">Sort by:</label>
                   <select id="sortBy" onchange="sortProjects()">
                         <option value="name">📝 Name</option>
-                        <option value="completed">✅ Progress</option>
+                        <option value="completed" selected>✅ Progress</option>
                         <option value="skill">🎯 Skills</option>
                         <option value="date">📅 Date</option>
                         <option value="difficulty">⚡ Difficulty</option>
