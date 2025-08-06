@@ -903,7 +903,7 @@ function deleteQuest(projectIndex, questTitle) {
       const quest = projects[projectIndex].quests.find(q => q.title === questTitle);
 
       if (quest) {
-            // Remove all task completion data for this quest
+            // Remove from localStorage when the scheduled quest is deleted
             if (quest.tasks) {
                   quest.tasks.forEach(task => {
                         const key = getTaskKey(projectTitle, questTitle, task);
@@ -911,7 +911,7 @@ function deleteQuest(projectIndex, questTitle) {
                   });
             }
 
-            // Remove quest from completed quests list
+            // Update completed quests stored in localStorage
             const completed = JSON.parse(localStorage.getItem("completedQuests")) || [];
             const questId = `${projectTitle}::${questTitle}`;
             const updatedCompleted = completed.filter(id => id !== questId);
@@ -923,6 +923,7 @@ function deleteQuest(projectIndex, questTitle) {
             (q) => q.title !== questTitle
       );
 
+      // Persist updated project list to localStorage
       saveProjectsToLocal();
       loadQuests(projectIndex);
       loadProjects(); // Refresh project tabs
