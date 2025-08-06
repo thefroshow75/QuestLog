@@ -53,20 +53,45 @@ function showSection(sectionName) {
       }
 }
 
-// Load Projects on Page Start - Always start with clean tutorial-only state
+// Load Projects on Page Start - Ensure immediate loading
 window.onload = () => {
       console.log('🎮 QuestLog starting up...');
 
-      // For now, always load fresh tutorial to reduce anxiety from multiple projects
-      // This ensures users always start with just the tutorial project
-      forceTutorialReset();
+      // Show loading state briefly
+      const projectList = document.getElementById('projectList');
+      const questList = document.getElementById('questList');
+      const projectGallery = document.getElementById('projectGallery');
 
-      // Initialize chat since forceTutorialReset doesn't handle it
+      if (projectList) projectList.innerHTML = '<h3>📁 Loading Projects...</h3>';
+      if (questList) questList.innerHTML = '<h3>⏳ Loading Quests...</h3>';
+      if (projectGallery) projectGallery.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--color-text-muted);">🎮 Loading QuestLog...</div>';
+
+      // Load existing projects or initialize with tutorial immediately
+      const storedProjects = getProjects();
+      projects.length = 0;
+      projects.push(...storedProjects);
+
+      // Ensure we have projects - getProjects() now handles this
+      console.log(`📊 Loaded ${projects.length} projects total`);
+
+      // Initialize components
       initializeChat();
-
-      // Initialize mobile optimizations and log device info
       logMobileInfo();
       optimizeForMobile();
+
+      // Load UI elements
+      loadProjects(); // Load project sidebar and gallery
+      updateXPBar();
+      updateDataSummary();
+
+      // Show the first project's quests by default
+      if (projects.length > 0) {
+            setTimeout(() => {
+                  loadQuests(0);
+                  currentProjectIndex = 0;
+                  showNotification(`🎮 Welcome back! Loaded ${projects.length} projects.`, 'success');
+            }, 100);
+      }
 
       // Add navigation event listeners
       document.querySelectorAll('.nav-links li').forEach(link => {
@@ -799,58 +824,72 @@ function loadQuests(index) {
 
 function addQuestFromJSON(json) {
       try {
-      
+            let quest = JSON.parse(json);
 
-      let quest = JSON.parse(json);
+            if (quest.quest) quest = quest.quest;
 
-      if (quest.quest) quest = quest.quest;
+            console.log("Received quest object from QuestBot:", quest);
 
-      console.log("Received quest object from GPT:", quest);
-
-      if (!quest.title || !Array.isArray(quest.tasks)) {
-            alert("Invalid Quest Format: Must include 'title' and 'tasks' array.");
-            return;
-      }
-
-      // Use medium as fallback difficulty
-      const validatedQuest = {
-            title: quest.title,
-            description: quest.description || "",
-            difficulty: quest.difficulty || "medium",
-            tasks: quest.tasks.map(t => t.trim()).filter(Boolean),
-            skills: quest.skills ? quest.skills.map(s => s.trim()).filter(Boolean) : [],
-            rewards: quest.rewards ? quest.rewards.map(r => r.trim()).filter(Boolean) : [],
-      };
-
-      // Add to current project
-      if (currentProjectIndex === null) {
-            let defaultIndex = projects.findIndex(p => p.title === "QuestBot's Log");
-            
-            if (defaultIndex === -1) {
-                  // Create QuestBot's Log if it doesn't exist
-                  const newProject = {
-                        title: "QuestBot's Log",
-                        description: "Auto-generated quests from your AI assistant.",
-                        image: "https://via.placeholder.com/150x100?text=QuestBot",
-                        quests: []
-                  };
-                  projects.push(newProject);
-                  saveProjectsToLocal();
-                  loadProjects();
-                  defaultIndex = projects.length - 1;
+            if (!quest.title || !Array.isArray(quest.tasks)) {
+                  showNotification("❌ Invalid Quest Format: Must include 'title' and 'tasks' array.", 'error');
+                  return false;
             }
 
-            currentProjectIndex = defaultIndex;
-      }
+            // Use medium as fallback difficulty
+            const validatedQuest = {
+                  title: quest.title,
+                  description: quest.description || "",
+                  difficulty: quest.difficulty || "medium",
+                  tasks: quest.tasks.map(t => t.trim()).filter(Boolean),
+                  skills: quest.skills ? quest.skills.map(s => s.trim()).filter(Boolean) : [],
+                  rewards: quest.rewards ? quest.rewards.map(r => r.trim()).filter(Boolean) : [],
+            };
 
-      projects[currentProjectIndex].quests.push(validatedQuest);
-      saveProjectsToLocal();
-      loadQuests(currentProjectIndex);
+            // Determine which project to add to
+            let targetProjectIndex = currentProjectIndex;
 
-      alert(`Quest "${validatedQuest.title}" added!`);
+            // If no current project or current project is invalid, use QuestBot's Log
+            if (targetProjectIndex === null || targetProjectIndex < 0 || targetProjectIndex >= projects.length) {
+                  let questBotIndex = projects.findIndex(p => p.title === "QuestBot's Log");
+
+                  if (questBotIndex === -1) {
+                        // Create QuestBot's Log if it doesn't exist
+                        const newProject = {
+                              title: "QuestBot's Log",
+                              description: "Auto-generated quests from your AI assistant.",
+                              image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=300&h=200&fit=crop&q=80&auto=format",
+                              category: "AI Generated",
+                              type: "project",
+                              skills: ["ai-generated", "questbot"],
+                              quests: [],
+                              createdAt: new Date().toISOString()
+                        };
+                        projects.push(newProject);
+                        questBotIndex = projects.length - 1;
+                        console.log("Created QuestBot's Log project");
+                  }
+
+                  targetProjectIndex = questBotIndex;
+            }
+
+            // Add quest to target project
+            if (!projects[targetProjectIndex].quests) {
+                  projects[targetProjectIndex].quests = [];
+            }
+
+            projects[targetProjectIndex].quests.push(validatedQuest);
+            saveProjectsToLocal();
+
+            // Update current project index to show the quest
+            currentProjectIndex = targetProjectIndex;
+
+            console.log(`Quest "${validatedQuest.title}" added to project "${projects[targetProjectIndex].title}"`);
+            return true;
+
       } catch (e) {
-      alert("Failed to parse JSON. Check your syntax.");
-      console.error(e);
+            console.error("Failed to parse quest JSON:", e);
+            showNotification("❌ Failed to parse quest data. Please try again.", 'error');
+            return false;
       }
 }
 
@@ -957,6 +996,11 @@ function toggleArchivedQuests(projectIndex) {
       loadQuests(projectIndex);
 }
 
+function toggleCompletedQuests(projectIndex) {
+      showCompletedQuests = !showCompletedQuests;
+      loadQuests(projectIndex);
+}
+
 function unarchiveQuest(projectIndex, questTitle) {
       if (!confirm(`Unarchive quest "${questTitle}"?\n\nThis will make it visible in the quest list again.`)) return;
 
@@ -997,22 +1041,26 @@ function markQuestAsComplete(projectIndex, questTitle) {
 // Projects section
 const projects = [];
 function getProjects() {
-      const stored = localStorage.getItem('projects');
-      if (stored && stored !== 'null' && stored !== '[]') {
-            try {
+      try {
+            const stored = localStorage.getItem('projects');
+            if (stored && stored !== 'null' && stored !== '[]' && stored !== 'undefined') {
                   const parsed = JSON.parse(stored);
                   if (parsed && Array.isArray(parsed) && parsed.length > 0) {
-                        console.log('Loaded projects from localStorage:', parsed.length);
+                        console.log('✅ Loaded', parsed.length, 'projects from localStorage');
                         return parsed;
                   }
-            } catch (e) {
-                  console.error("Failed to parse stored projects:", e);
             }
+      } catch (e) {
+            console.error("Failed to parse stored projects:", e);
+            localStorage.removeItem('projects'); // Clean up corrupted data
       }
 
-      // Return sample projects if none exist or if localStorage is empty
-      console.log('Loading sample projects');
-      return getSampleProjects();
+      // Return sample projects if none exist or if localStorage is empty/corrupted
+      console.log('📦 Loading sample projects (no saved projects found)');
+      const sampleProjects = getSampleProjects();
+      // Save the sample projects immediately for next time
+      localStorage.setItem('projects', JSON.stringify(sampleProjects));
+      return sampleProjects;
 }
 
 // Debug function to reset sample data
@@ -1834,4 +1882,727 @@ function showProjectDetails(project) {
                   modal.remove();
             }
       });
+}
+
+// --- MISSING FUNCTION STUBS & UTILITIES ---
+
+// Returns the number of completed quests for a project index
+function getCompletedQuestsCount(projectIndex) {
+    const project = projects[projectIndex];
+    if (!project || !project.quests) return 0;
+    let count = 0;
+    project.quests.forEach(q => {
+        if (isQuestCompleted(q, project.title)) count++;
+    });
+    return count;
+}
+
+// Determines if a quest is completed (all tasks checked)
+function isQuestCompleted(quest, projectTitle) {
+    if (!quest.tasks || quest.tasks.length === 0) return false;
+    return quest.tasks.every(task => {
+        const key = getTaskKey(projectTitle, quest.title, task);
+        return localStorage.getItem(key) === 'true';
+    });
+}
+
+// Calculates project progress as a percent (0-100)
+function calculateProjectProgress(project) {
+    if (!project.quests || project.quests.length === 0) return 0;
+    let totalTasks = 0, completedTasks = 0;
+    project.quests.forEach(quest => {
+        if (quest.tasks) {
+            totalTasks += quest.tasks.length;
+            quest.tasks.forEach(task => {
+                const key = getTaskKey(project.title, quest.title, task);
+                if (localStorage.getItem(key) === 'true') completedTasks++;
+            });
+        }
+    });
+    return totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+}
+
+// Returns XP for a quest difficulty (easy/medium/hard/insane)
+function getXPByDifficulty(difficulty) {
+    switch (difficulty) {
+        case 'easy': return 50;
+        case 'medium': return 100;
+        case 'hard': return 200;
+        case 'insane': return 400;
+        default: return 100;
+    }
+}
+
+// Returns quest difficulty as a string
+function getQuestDifficulty(quest) {
+    const n = quest.tasks ? quest.tasks.length : 0;
+    if (n <= 3) return 'easy';
+    if (n <= 7) return 'medium';
+    if (n <= 11) return 'hard';
+    return 'insane';
+}
+
+// Updates the XP bar
+function updateXPBar() {
+    // Calculate XP from completed quests and tasks
+    let calculatedXP = 0;
+    const completedQuestsList = JSON.parse(localStorage.getItem("completedQuests") || "[]");
+
+    // Add XP for completed quests
+    projects.forEach(project => {
+        if (project.quests) {
+            project.quests.forEach(quest => {
+                const questId = `${project.title}::${quest.title}`;
+                if (completedQuestsList.includes(questId)) {
+                    const difficulty = getQuestDifficulty(quest);
+                    calculatedXP += getXPByDifficulty(difficulty);
+                }
+            });
+        }
+    });
+
+    // Update stored XP if different
+    const storedXP = getXP();
+    if (calculatedXP !== storedXP) {
+        localStorage.setItem('totalXP', calculatedXP.toString());
+    }
+
+    const totalXP = calculatedXP;
+    const level = Math.floor(totalXP / 300);
+    const xpInCurrentLevel = totalXP % 300;
+    const xpProgress = (xpInCurrentLevel / 300) * 100;
+
+    // Update desktop XP bar
+    const expProgress = document.getElementById('exp-progress');
+    const levelElement = document.getElementById('level');
+
+    if (expProgress) {
+        expProgress.style.width = `${xpProgress}%`;
+        expProgress.textContent = `${Math.round(xpProgress)}%`;
+    }
+
+    if (levelElement) {
+        levelElement.textContent = `LVL ${level}`;
+    }
+
+    // Update mobile XP bar
+    const mobileExpProgress = document.getElementById('mobileExpProgress');
+    const mobileLevel = document.getElementById('mobileLevel');
+
+    if (mobileExpProgress) {
+        mobileExpProgress.style.width = `${xpProgress}%`;
+        mobileExpProgress.textContent = `${Math.round(xpProgress)}%`;
+    }
+
+    if (mobileLevel) {
+        mobileLevel.textContent = `LVL ${level}`;
+    }
+}
+
+// Updates the data summary
+function updateDataSummary() {
+    const summary = getDataSummary();
+
+    // Update start screen statistics
+    const statProjects = document.getElementById('statProjects');
+    const statQuests = document.getElementById('statQuests');
+    const statTasks = document.getElementById('statTasks');
+    const statLevel = document.getElementById('statLevel');
+
+    if (statProjects) statProjects.textContent = summary.projects;
+    if (statQuests) statQuests.textContent = summary.quests;
+    if (statTasks) statTasks.textContent = summary.completedTasks + '/' + summary.tasks;
+    if (statLevel) statLevel.textContent = summary.level;
+}
+
+// Generates the skill filter bar
+function generateSkillFilterBar() {
+    const filterBar = document.getElementById('skillFilterBar');
+    if (!filterBar) return;
+
+    const allSkills = new Set();
+
+    // Collect all skills from all projects
+    projects.forEach(project => {
+        const skills = extractProjectSkills(project);
+        skills.forEach(skill => allSkills.add(skill));
+    });
+
+    const skillsArray = Array.from(allSkills).sort();
+
+    if (skillsArray.length === 0) {
+        filterBar.style.display = 'none';
+        return;
+    }
+
+    filterBar.style.display = 'block';
+
+    const tagsContainer = document.getElementById('skillFilterTags');
+    if (tagsContainer) {
+        tagsContainer.innerHTML = '';
+
+        skillsArray.forEach(skill => {
+            const tag = document.createElement('span');
+            tag.className = 'skill-filter-tag';
+            tag.textContent = skill;
+            tag.onclick = () => toggleSkillFilter(skill, tag);
+
+            if (selectedSkills.has(skill)) {
+                tag.classList.add('active');
+            }
+
+            tagsContainer.appendChild(tag);
+        });
+    }
+}
+
+function toggleSkillFilter(skill, tagElement) {
+    if (selectedSkills.has(skill)) {
+        selectedSkills.delete(skill);
+        tagElement.classList.remove('active');
+    } else {
+        selectedSkills.add(skill);
+        tagElement.classList.add('active');
+    }
+
+    loadProjectGallery();
+}
+
+function clearSkillFilters() {
+    selectedSkills.clear();
+    const tags = document.querySelectorAll('.skill-filter-tag');
+    tags.forEach(tag => tag.classList.remove('active'));
+    loadProjectGallery();
+}
+
+// Filters projects by selected skills (returns all if none selected)
+function filterProjectsBySkills(projectsList) {
+    if (!selectedSkills || selectedSkills.size === 0) return projectsList;
+    return projectsList.filter(project => {
+        const skills = extractProjectSkills(project);
+        return skills.some(skill => selectedSkills.has(skill));
+    });
+}
+
+// Exports a project to clipboard (stub)
+function exportProject(projectIndex) {
+    if (projectIndex < 0 || projectIndex >= projects.length) return;
+    const project = projects[projectIndex];
+    const json = JSON.stringify(project, null, 2);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(json);
+        showNotification && showNotification('📋 Project copied to clipboard!', 'success');
+    } else {
+        alert('Clipboard API not supported.');
+    }
+}
+
+// Creates the completed quests tab for the sidebar
+function createCompletedQuestsTab() {
+    const tab = document.createElement('div');
+    tab.className = 'project-tab completed-quests-tab';
+    tab.innerHTML = `
+        <span style="font-size: 1.2rem;">✅</span>
+        <span>Completed Quests</span>
+    `;
+    tab.onclick = () => showCompletedQuestsModal();
+    return tab;
+}
+
+// Shows a modal with all completed quests (stub)
+function showCompletedQuestsModal() {
+    alert('Completed quests modal not yet implemented.');
+}
+
+// Save all data to localStorage (stub)
+function saveAllDataToLocal() {
+    saveProjectsToLocal();
+    // Add other save logic if needed
+}
+
+// Import from JSON (stub)
+function importFromJSON(json) {
+    try {
+        const data = JSON.parse(json);
+        if (data.projects) {
+            localStorage.setItem('projects', JSON.stringify(data.projects));
+        }
+        if (data.completedQuests) {
+            localStorage.setItem('completedQuests', JSON.stringify(data.completedQuests));
+        }
+        // Add more fields as needed
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// Show notification (fallback)
+function showNotification(msg, type) {
+    alert(msg);
+}
+
+function saveProjectsToLocal() {
+    try {
+        localStorage.setItem('projects', JSON.stringify(projects));
+    } catch (e) {
+        showNotification && showNotification('❌ Failed to save projects: ' + e.message, 'error');
+    }
+}
+
+// Get summary of current data
+function getDataSummary() {
+    const projectsList = JSON.parse(localStorage.getItem('projects') || '[]');
+    const totalXP = localStorage.getItem('totalXP') || '0';
+
+    let totalQuests = 0;
+    let totalTasks = 0;
+    let completedTasks = 0;
+
+    projectsList.forEach(project => {
+        if (project.quests) {
+            totalQuests += project.quests.length;
+            project.quests.forEach(quest => {
+                if (quest.tasks) {
+                    totalTasks += quest.tasks.length;
+                    quest.tasks.forEach(task => {
+                        const key = getTaskKey(project.title, quest.title, task);
+                        if (localStorage.getItem(key) === 'true') {
+                            completedTasks++;
+                        }
+                    });
+                }
+            });
+        }
+    });
+
+    return {
+        projects: projectsList.length,
+        quests: totalQuests,
+        tasks: totalTasks,
+        completedTasks,
+        totalXP: parseInt(totalXP),
+        level: Math.floor(parseInt(totalXP) / 300)
+    };
+}
+
+// Chat variables
+let questChat = [];
+let replyCount = 0;
+
+// XP System Functions
+function getXP() {
+    return parseInt(localStorage.getItem('totalXP') || '0', 10);
+}
+
+function addXP(amount) {
+    const currentXP = getXP();
+    const newXP = currentXP + amount;
+    localStorage.setItem('totalXP', newXP.toString());
+    updateXPBar();
+    return newXP;
+}
+
+// Initialize chat with welcome message
+function initializeChat() {
+    const chatMessages = document.getElementById('chatMessages');
+    if (chatMessages && chatMessages.children.length === 0) {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const modeInfo = isLocalhost ?
+            "\n🔧 **Mode:** Client-side (for enhanced AI, run: python QuestBotMK2.py)" :
+            "\n🌐 **Mode:** Client-side (GitHub Pages compatible)";
+
+        const welcomeMsg = document.createElement('div');
+        welcomeMsg.className = 'message bot';
+        welcomeMsg.innerHTML = `<strong>QuestBot:</strong> <div style="background: var(--color-bg-lighter); padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; color: var(--color-bot); white-space: pre-line;">
+🎮 Welcome to QuestBot! 👋
+
+I'm your personal quest management assistant, here to help you turn your projects into epic adventures!
+
+📊 **Your Current Status:**
+• Level: ${Math.floor(getXP() / 300)}
+• XP: ${getXP()}
+• Projects: ${projects.length}${modeInfo}
+
+💡 **I can help you:**
+• Create and organize quests ("generate quest")
+• Break down complex goals into tasks
+• Track your progress and achievements
+• Suggest new quests and improvements
+• Manage your XP and leveling system
+
+Try asking me "help" or say "generate quest" to get started!</div>`;
+        chatMessages.appendChild(welcomeMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+}
+
+async function sendAIMessage() {
+    const input = document.getElementById("chatInput");
+    const chatLog = document.getElementById("chatMessages");
+    const userMessage = input.value.trim();
+
+    if (!userMessage) return;
+
+    // Show user's message
+    const userMsgDiv = document.createElement('div');
+    userMsgDiv.className = 'message user';
+    userMsgDiv.innerHTML = `<strong>You:</strong> ${userMessage}`;
+    chatLog.appendChild(userMsgDiv);
+
+    input.value = "";
+
+    // Show typing indicator
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message bot typing';
+    typingDiv.innerHTML = `<strong>QuestBot:</strong> <div style="background: var(--color-bg-lighter); padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; color: var(--color-bot);">🤖 Thinking...</div>`;
+    chatLog.appendChild(typingDiv);
+    chatLog.scrollTop = chatLog.scrollHeight;
+
+    try {
+        // Check if we should try the backend (only on localhost and if backend is likely available)
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        let useBackend = false;
+
+        if (isLocalhost) {
+            // For now, always use client-side mode to avoid fetch errors
+            // To enable backend mode, run: python QuestBotMK2.py
+            useBackend = false;
+        }
+
+        if (useBackend) {
+            // Try to call the Python FastAPI server only on localhost
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+            const response = await fetch('http://localhost:3000/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: userMessage,
+                    generate_quest: userMessage.toLowerCase().includes('generate quest') ||
+                                   userMessage.toLowerCase().includes('create quest') ||
+                                   userMessage.toLowerCase().includes('new quest')
+                }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Remove typing indicator
+            typingDiv.remove();
+
+            // Show bot response
+            const botMsgDiv = document.createElement('div');
+            botMsgDiv.className = 'message bot';
+            botMsgDiv.innerHTML = `<strong>QuestBot:</strong> <div style="background: var(--color-bg-lighter); padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; color: var(--color-bot); white-space: pre-line;">🔗 <em>Backend Mode:</em>\n\n${data.response}</div>`;
+            chatLog.appendChild(botMsgDiv);
+
+            // Handle quest generation if returned
+            if (data.quest) {
+                console.log("✅ Quest generated by Python backend:", data.quest);
+
+                // Convert the Python quest format to our frontend format
+                const questForFrontend = {
+                    title: data.quest.title,
+                    description: data.quest.description,
+                    tasks: data.quest.tasks,
+                    skills: ["ai-generated"], // Mark as AI generated
+                    rewards: [`${data.quest.xp} XP`, data.quest.difficulty + " difficulty"],
+                    difficulty: data.quest.difficulty
+                };
+
+                // Add the quest to the current project or create a QuestBot project
+                addQuestFromJSON(JSON.stringify({ quest: questForFrontend }));
+
+                // Show notification
+                showNotification(`🤖 QuestBot generated a new ${data.quest.difficulty} quest for you!`, 'success');
+            }
+        } else {
+            // Use client-side responses (default for all cases now)
+            throw new Error('Using client-side mode');
+        }
+
+    } catch (error) {
+        // Only log actual errors, not expected fallbacks
+        if (!error.message.includes('client-side mode')) {
+            console.log("Backend unavailable, using client-side QuestBot:", error.message);
+        }
+
+        // Remove typing indicator
+        if (typingDiv && typingDiv.parentNode) {
+            typingDiv.remove();
+        }
+
+        // Fall back to local response (this is normal and expected)
+        const fallbackResponse = generateBotResponse(userMessage);
+        const localMsgDiv = document.createElement('div');
+        localMsgDiv.className = 'message bot';
+        localMsgDiv.innerHTML = `<strong>QuestBot:</strong> <div style="background: var(--color-bg-lighter); padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; color: var(--color-bot); white-space: pre-line;">${fallbackResponse}</div>`;
+        chatLog.appendChild(localMsgDiv);
+    }
+
+    chatLog.scrollTop = chatLog.scrollHeight;
+    input.focus();
+}
+
+function generateBotResponse(userMessage) {
+    const message = userMessage.toLowerCase();
+
+    if (message.includes('generate quest') || message.includes('create quest') || message.includes('new quest')) {
+        // Generate a sample quest for GitHub Pages deployment
+        const questTemplates = [
+            {
+                title: "⚙️ Master the Code Quest",
+                description: "Enhance your programming skills with practical coding challenges.",
+                difficulty: "medium",
+                tasks: [
+                    "🧠 Choose a programming language to focus on",
+                    "🔍 Find online coding challenges or tutorials",
+                    "💻 Complete at least 3 coding exercises",
+                    "🔧 Build a small project to practice",
+                    "📚 Document what you learned",
+                    "🚀 Share your progress with others"
+                ],
+                skills: ["programming", "problem-solving", "learning"],
+                rewards: ["150 XP", "Coding Badge", "Knowledge Gained"]
+            },
+            {
+                title: "🎨 Creative Design Challenge",
+                description: "Explore your creative side with a design project.",
+                difficulty: "easy",
+                tasks: [
+                    "🎨 Choose a design tool (Figma, Canva, etc.)",
+                    "💡 Brainstorm creative ideas",
+                    "✏️ Create initial sketches or wireframes",
+                    "🌈 Develop a color palette",
+                    "🖼️ Create the final design",
+                    "📱 Get feedback from others"
+                ],
+                skills: ["design", "creativity", "visual-arts"],
+                rewards: ["100 XP", "Designer Badge", "Creative Achievement"]
+            },
+            {
+                title: "🏃‍♂️ Health & Fitness Quest",
+                description: "Improve your physical health and establish good habits.",
+                difficulty: "medium",
+                tasks: [
+                    "🥗 Plan a healthy meal schedule",
+                    "🏃‍♂️ Create a simple exercise routine",
+                    "💧 Track daily water intake",
+                    "😴 Establish better sleep habits",
+                    "📊 Monitor progress for one week",
+                    "🎯 Set long-term health goals"
+                ],
+                skills: ["health", "discipline", "self-care"],
+                rewards: ["120 XP", "Wellness Badge", "Healthy Habits"]
+            }
+        ];
+
+        const randomQuest = questTemplates[Math.floor(Math.random() * questTemplates.length)];
+
+        // Add the quest to current project
+        setTimeout(() => {
+            try {
+                addQuestFromJSON(JSON.stringify({ quest: randomQuest }));
+                showNotification(`🤖 QuestBot generated: "${randomQuest.title}"!`, 'success');
+
+                // Refresh the quest list if we're on the quests screen
+                if (currentProjectIndex !== null && currentProjectIndex >= 0) {
+                    loadQuests(currentProjectIndex);
+                }
+
+                // Also refresh project gallery to show updated quest count
+                loadProjectGallery();
+            } catch (error) {
+                console.error('Error adding quest from QuestBot:', error);
+                showNotification('❌ Failed to add quest. Please try again.', 'error');
+            }
+        }, 1000);
+
+        return `🧙‍♂️ *Quest Generated!*\n\nI've forged a new quest for you: "${randomQuest.title}"\n\nThis ${randomQuest.difficulty} difficulty quest will help you: ${randomQuest.description}\n\nThe quest has been added to your current project. Check the quest list to start working on it!`;
+    } else if (message.includes('quest') || message.includes('task')) {
+        return `Great question about quests! I can help you create and manage quests for your projects. Currently you have ${projects.length} projects with various quests. Would you like me to suggest a new quest for one of your existing projects, or help you create a new project?\n\nTry saying "generate quest" to get a custom quest!`;
+    } else if (message.includes('project')) {
+        return `I see you're interested in projects! You currently have these projects: ${projects.map(p => p.title).join(', ')}. Which one would you like to work on, or would you like to start a new project?`;
+    } else if (message.includes('help')) {
+        return `I'm QuestBot, your personal quest management assistant! I can help you:\n\n📝 Create and organize quests for your projects\n🎯 Break down complex goals into manageable tasks\n🏆 Track your progress and achievements\n💡 Suggest new quests based on your interests\n⚡ Manage your XP and leveling system\n🎮 Generate random quests (say "generate quest")\n\nWhat would you like to work on today?`;
+    } else if (message.includes('hello') || message.includes('hi')) {
+        return `Hello there, adventurer! 👋 Welcome to your Quest Log. I'm here to help you turn your projects into epic quests. Currently you're level ${Math.floor(getXP() / 300)} with ${getXP()} XP. What quest shall we embark on today?`;
+    } else if (message.includes('status') || message.includes('progress')) {
+        const summary = getDataSummary();
+        return `📊 **Your Current Status:**\n\n🎯 Level: ${summary.level}\n⚡ XP: ${summary.totalXP}\n📁 Projects: ${summary.projects}\n🗺️ Quests: ${summary.quests}\n✅ Completed Tasks: ${summary.completedTasks}/${summary.tasks}\n\nYou're doing great! Keep up the good work!`;
+    } else {
+        return `That's interesting! I'm still learning, but I'd love to help you turn that into a quest or project. Could you tell me more about what you're trying to accomplish? I can help you break it down into manageable tasks and track your progress!\n\nTry asking for "help" or say "generate quest" for a random quest!`;
+    }
+}
+
+// Show notification function with better UX and proper stacking
+function showNotification(message, type = 'info') {
+    // Remove duplicate messages
+    const existingNotifications = document.querySelectorAll('.questlog-notification');
+    existingNotifications.forEach(existing => {
+        if (existing.textContent.includes(message.replace(/[^\w\s]/g, ''))) {
+            existing.remove();
+        }
+    });
+
+    // Create notification container if it doesn't exist
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        container.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        `;
+        document.body.appendChild(container);
+    }
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `questlog-notification notification-${type}`;
+    notification.textContent = message;
+
+    notification.style.cssText = `
+        background: ${type === 'success' ? 'var(--color-primary)' : type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : 'var(--color-accent)'};
+        color: white;
+        padding: 0.8rem 1.2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        max-width: 300px;
+        word-wrap: break-word;
+        font-family: var(--font-main);
+        font-size: 0.9rem;
+        font-weight: 500;
+        pointer-events: auto;
+        cursor: pointer;
+        transform: translateX(100%);
+        opacity: 0;
+        transition: all 0.3s ease;
+        margin-bottom: 4px;
+    `;
+
+    container.appendChild(notification);
+
+    // Animate in
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+        notification.style.opacity = '1';
+    }, 10);
+
+    // Auto remove after 4 seconds
+    const removeTimeout = setTimeout(() => {
+        removeNotification(notification);
+    }, 4000);
+
+    // Allow click to dismiss
+    notification.onclick = () => {
+        clearTimeout(removeTimeout);
+        removeNotification(notification);
+    };
+
+    // Clean up container if empty
+    function removeNotification(notif) {
+        if (notif.parentNode) {
+            notif.style.transform = 'translateX(100%)';
+            notif.style.opacity = '0';
+            setTimeout(() => {
+                if (notif.parentNode) {
+                    notif.remove();
+                }
+                // Remove container if empty
+                if (container.children.length === 0) {
+                    container.remove();
+                }
+            }, 300);
+        }
+    }
+}
+
+// Enhanced project gallery loading with better error handling
+function loadProjectGallery() {
+    const gallery = document.getElementById('projectGallery');
+    if (!gallery) {
+        console.warn('Project gallery element not found');
+        return;
+    }
+
+    // Clear existing content
+    gallery.innerHTML = '';
+
+    // Generate skill filter bar
+    generateSkillFilterBar();
+
+    // Ensure projects array is populated
+    if (projects.length === 0) {
+        console.log('No projects found in gallery, loading sample projects...');
+        const sampleProjects = getSampleProjects();
+        projects.push(...sampleProjects);
+        saveProjectsToLocal();
+
+        // Also update the sidebar
+        loadProjects();
+    }
+
+    // Get sorted and filtered projects (always sort by completion first)
+    const sortedProjects = getSortedProjectsByCompletion();
+    const filteredProjects = filterProjectsBySkills(sortedProjects);
+
+    // Limit to 5 projects unless "see more" is active
+    const projectsToShow = showAllProjects ? filteredProjects : filteredProjects.slice(0, 5);
+    const hasMoreProjects = filteredProjects.length > 5;
+
+    // Create project cards
+    projectsToShow.forEach(project => {
+        const projectCard = createProjectCard(project);
+        gallery.appendChild(projectCard);
+    });
+
+    // Add "See More/See Less" button if there are more than 5 projects
+    if (hasMoreProjects) {
+        const seeMoreCard = document.createElement('div');
+        seeMoreCard.className = 'project-card see-more-card';
+        seeMoreCard.innerHTML = `
+            <div class="see-more-content">
+                <div class="see-more-icon">${showAllProjects ? '⬆️' : '⬇️'}</div>
+                <h3>${showAllProjects ? 'See Less' : 'See More'}</h3>
+                <p>${showAllProjects ? 'Show fewer projects' : `View ${filteredProjects.length - 5} more projects`}</p>
+            </div>
+        `;
+        seeMoreCard.onclick = () => {
+            showAllProjects = !showAllProjects;
+            loadProjectGallery();
+        };
+        gallery.appendChild(seeMoreCard);
+    }
+
+    // Add "Add New Project" button at the end
+    const addProjectCard = document.createElement('div');
+    addProjectCard.className = 'project-card add-project-card';
+    addProjectCard.innerHTML = `
+        <div class="add-project-content">
+            <div class="add-project-icon">➕</div>
+            <h3>Add New Project</h3>
+            <p>Add media, blog posts, experimental data, and more projects</p>
+        </div>
+    `;
+    addProjectCard.onclick = () => document.getElementById('formOverlay').style.display = 'flex';
+    gallery.appendChild(addProjectCard);
+
+    console.log(`Loaded ${projectsToShow.length} projects in gallery`);
 }

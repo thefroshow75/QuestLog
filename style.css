@@ -635,7 +635,7 @@ section {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: url('Images/Justitia.png') no-repeat center center / cover;
+  background: linear-gradient(135deg, var(--color-bg) 0%, var(--color-bg-light) 100%);
 }
 
 /* Mobile-specific styles */

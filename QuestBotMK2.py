@@ -3,9 +3,12 @@
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
+import os
 
 app = FastAPI()
 
@@ -16,6 +19,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve static files (HTML, CSS, JS)
+app.mount("/static", StaticFiles(directory="."), name="static")
+
+@app.get("/")
+async def read_index():
+    return FileResponse('index.html')
+
+@app.get("/{filename}")
+async def read_static_file(filename: str):
+    if filename in ['style.css', 'script.js', 'export-functions.js']:
+        return FileResponse(filename)
+    return FileResponse('index.html')
 
 # Input model
 class ChatInput(BaseModel):
