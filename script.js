@@ -1,3 +1,22 @@
+// script.js (Organized & Commented)
+
+/*
+==============================
+📜 SCRIPT INDEX
+==============================
+1. 🔁 Window Load + Page Setup
+2. 🧭 Navigation Tab Switching
+3. 🔧 Quest & Project UI Logic
+4. 💬 ChatBot Functions (QuestBotMK2)
+5. 📦 Game Save/Load System
+6. 📊 XP System (Stub)
+7. 🌐 API Communication
+==============================
+*/
+
+/* ----------------------------------
+1. 🔁 Window Load + Page Setup
+---------------------------------- */
 // Navigation functionality
 function showSection(sectionName) {
       // Handle settings navigation to start screen
@@ -34,42 +53,20 @@ function showSection(sectionName) {
       }
 }
 
-// Load Projects on Page Start
+// Load Projects on Page Start - Always start with clean tutorial-only state
 window.onload = () => {
-      const stored = localStorage.getItem('projects');
-      let validProjects = [];
+      console.log('🎮 QuestLog starting up...');
 
-      // Determine if we need to load sample data
-      if (!stored || stored === 'null' || stored === '[]') {
-            console.log('No projects found, loading sample data...');
-            validProjects = getSampleProjects();
-            localStorage.setItem('projects', JSON.stringify(validProjects));
-      } else {
-            try {
-                  const parsed = JSON.parse(stored);
-                  if (Array.isArray(parsed) && parsed.length > 0) {
-                        validProjects = parsed;
-                  } else {
-                        console.warn('Stored projects invalid, using sample fallback.');
-                        validProjects = getSampleProjects();
-                        localStorage.setItem('projects', JSON.stringify(validProjects));
-                  }
-            } catch (e) {
-                  console.error('Error parsing stored projects:', e);
-                  validProjects = getSampleProjects();
-                  localStorage.setItem('projects', JSON.stringify(validProjects));
-            }
-      }
+      // For now, always load fresh tutorial to reduce anxiety from multiple projects
+      // This ensures users always start with just the tutorial project
+      forceTutorialReset();
 
-      // Clear and load valid data
-      projects.length = 0;
-      projects.push(...validProjects);
-      console.log('✅ Loaded projects:', projects.length);
-
-      loadProjects();
-      updateXPBar();
-      updateDataSummary();
+      // Initialize chat since forceTutorialReset doesn't handle it
       initializeChat();
+
+      // Initialize mobile optimizations and log device info
+      logMobileInfo();
+      optimizeForMobile();
 
       // Add navigation event listeners
       document.querySelectorAll('.nav-links li').forEach(link => {
@@ -78,6 +75,37 @@ window.onload = () => {
                   showSection(view + 'Screen');
             });
       });
+
+      // Mobile navigation functionality
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const mobileNavOverlay = document.getElementById('mobileNavOverlay');
+      const mobileNavClose = document.getElementById('mobileNavClose');
+
+      if (mobileMenuBtn && mobileNavOverlay) {
+            mobileMenuBtn.addEventListener('click', () => {
+                  mobileNavOverlay.style.display = 'block';
+            });
+
+            // Close mobile nav
+            [mobileNavClose, mobileNavOverlay].forEach(element => {
+                  if (element) {
+                        element.addEventListener('click', (e) => {
+                              if (e.target === element) {
+                                    mobileNavOverlay.style.display = 'none';
+                              }
+                        });
+                  }
+            });
+
+            // Mobile nav links
+            document.querySelectorAll('.mobile-nav-link').forEach(link => {
+                  link.addEventListener('click', () => {
+                        const view = link.getAttribute('data-view');
+                        showSection(view + 'Screen');
+                        mobileNavOverlay.style.display = 'none';
+                  });
+            });
+      }
 
       // Add chat functionality
       const chatSendBtn = document.getElementById('chatSendBtn');
@@ -115,8 +143,6 @@ window.onload = () => {
                   showSection('projectsScreen');
             });
       }
-
-
 
       // Hidden file input for loading
       const hiddenFileInput = document.getElementById('hiddenFileInput');
@@ -234,7 +260,7 @@ function closeLoadModal() {
 function loadFromTextarea() {
       const jsonData = document.getElementById('loadDataTextarea').value.trim();
       if (!jsonData) {
-            showNotification('❌ Please paste JSON data or load from file', 'error');
+            showNotification('�� Please paste JSON data or load from file', 'error');
             return;
       }
 
@@ -259,7 +285,7 @@ function closeQuestForm() {
 
 function closeForm() {
       document.getElementById('formOverlay').style.display = 'none';
-
+      clearProjectForm();
 }
 
 function saveNewQuest() {
@@ -288,6 +314,8 @@ function saveNewQuest() {
 
 
 
+let editingProjectIndex = -1; // Track which project is being edited
+
 function saveNewProject() {
       const title = document.getElementById('newProjectTitle').value;
       const desc = document.getElementById('newProjectDesc').value;
@@ -301,42 +329,150 @@ function saveNewProject() {
 
       const skills = skillsInput ? skillsInput.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-      const newProject = {
+      const projectData = {
             title,
             description: desc,
-            image: image || `https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=200&fit=crop&q=80&auto=format`,
+            image: image || "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=200&fit=crop&q=80&auto=format",
             category: category || 'Other',
             type: type || 'project',
             links: links || '',
-            quests: type === 'project' ? [] : undefined,
-            skills: skills,
-            createdAt: new Date().toISOString()
+            skills: skills
       };
 
-      // Add initial quest for project type
-      if (type === 'project' && skills.length > 0) {
-            newProject.quests = [{
-                  title: "Initial Setup",
-                  description: `Getting started with ${title}`,
-                  tasks: [
-                        "Set up project structure",
-                        "Research and plan implementation",
-                        "Create initial prototypes"
-                  ],
-                  skills: skills.slice(0, 3),
-                  rewards: ["Project kickoff", "Planning complete"]
-            }];
+      if (editingProjectIndex >= 0) {
+            // Editing existing project
+            const existingProject = projects[editingProjectIndex];
+
+            // Preserve existing data while updating fields
+            projects[editingProjectIndex] = {
+                  ...existingProject,
+                  ...projectData,
+                  updatedAt: new Date().toISOString()
+            };
+
+            if (typeof showNotification === 'function') {
+                  showNotification(`✅ Project "${title}" updated successfully!`, 'success');
+            }
+      } else {
+            // Creating new project
+            const newProject = {
+                  ...projectData,
+                  quests: type === 'project' ? [] : undefined,
+                  createdAt: new Date().toISOString()
+            };
+
+            // Add initial quest for project type
+            if (type === 'project' && skills.length > 0) {
+                  newProject.quests = [{
+                        title: "Initial Setup",
+                        description: `Getting started with ${title}`,
+                        tasks: [
+                              "Set up project structure",
+                              "Research and plan implementation",
+                              "Create initial prototypes"
+                        ],
+                        skills: skills.slice(0, 3),
+                        rewards: ["Project kickoff", "Planning complete"]
+                  }];
+            }
+
+            projects.push(newProject);
+
+            if (typeof showNotification === 'function') {
+                  showNotification(`✅ Project "${title}" added!`, 'success');
+            }
       }
 
-      projects.push(newProject);
       saveProjectsToLocal();
       closeForm();
       loadProjects();
+      clearProjectForm();
+}
+
+function editProject(projectIndex) {
+      if (projectIndex < 0 || projectIndex >= projects.length) return;
+
+      const project = projects[projectIndex];
+      editingProjectIndex = projectIndex;
+
+      // Update form title
+      const formTitle = document.querySelector('#formOverlay h3');
+      if (formTitle) {
+            formTitle.textContent = 'Edit Project';
+      }
+
+      // Populate form fields
+      document.getElementById('newProjectTitle').value = project.title || '';
+      document.getElementById('newProjectDesc').value = project.description || '';
+      document.getElementById('newProjectImage').value = project.image || '';
+      document.getElementById('newProjectCategory').value = project.category || 'Other';
+      document.getElementById('newProjectType').value = project.type || 'project';
+      document.getElementById('newProjectSkills').value = (project.skills || []).join(', ');
+      document.getElementById('newProjectLinks').value = project.links || '';
+
+      // Show the form
+      document.getElementById('formOverlay').style.display = 'flex';
+}
+
+function deleteProject(projectIndex) {
+      if (projectIndex < 0 || projectIndex >= projects.length) return;
+
+      const project = projects[projectIndex];
+
+      // Protect tutorial project from deletion
+      if (project.title.includes('Welcome to QuestLog')) {
+            alert('The tutorial project cannot be deleted. It helps you learn QuestLog features!');
+            return;
+      }
+
+      if (!confirm(`Are you sure you want to delete the project "${project.title}"?\n\nThis will also delete all quests and progress data for this project. This action cannot be undone.`)) {
+            return;
+      }
+
+      // Remove all task completion data for this project
+      if (project.quests) {
+            project.quests.forEach(quest => {
+                  if (quest.tasks) {
+                        quest.tasks.forEach(task => {
+                              const key = getTaskKey(project.title, quest.title, task);
+                              localStorage.removeItem(key);
+                        });
+                  }
+            });
+      }
+
+      // Remove project from completed quests list
+      const completed = JSON.parse(localStorage.getItem("completedQuests")) || [];
+      const updatedCompleted = completed.filter(id => !id.startsWith(`${project.title}::`));
+      localStorage.setItem("completedQuests", JSON.stringify(updatedCompleted));
+
+      // Remove project from array
+      projects.splice(projectIndex, 1);
+
+      saveProjectsToLocal();
+      loadProjects();
+      updateXPBar(); // Update XP since project data was removed
+
+      if (typeof showNotification === 'function') {
+            showNotification(`🗑️ Project "${project.title}" deleted successfully`, 'success');
+      }
+}
+
+function clearProjectForm() {
+      editingProjectIndex = -1;
+
+      // Reset form title
+      const formTitle = document.querySelector('#formOverlay h3');
+      if (formTitle) {
+            formTitle.textContent = 'Add New Project';
+      }
 
       // Clear form fields
       document.getElementById('newProjectTitle').value = '';
       document.getElementById('newProjectDesc').value = '';
       document.getElementById('newProjectImage').value = '';
+      document.getElementById('newProjectCategory').value = '';
+      document.getElementById('newProjectType').value = '';
       document.getElementById('newProjectSkills').value = '';
       document.getElementById('newProjectLinks').value = '';
 }
@@ -351,6 +487,9 @@ let showCompletedQuests = false;
 
 function loadQuests(index) {
       const questList = document.getElementById('questList');
+
+      // Clear previous quest content
+      questList.innerHTML = '';
 
       // Create header with toggle for archived quests
       const headerContainer = document.createElement('div');
@@ -432,6 +571,11 @@ function loadQuests(index) {
             const questHeader = document.createElement('div');
             questHeader.className = 'quest-header';
 
+            const titleRow = document.createElement('div');
+            titleRow.style.display = 'flex';
+            titleRow.style.justifyContent = 'space-between';
+            titleRow.style.alignItems = 'center';
+
             const questTitle = document.createElement('h3');
             questTitle.className = 'quest-title';
             let titleText = quest.title;
@@ -443,7 +587,22 @@ function loadQuests(index) {
             difficultyTag.className = `difficulty-tag difficulty-${difficulty}`;
             difficultyTag.textContent = difficulty;
 
-            questHeader.appendChild(questTitle);
+            // Add mobile expand button
+            const mobileExpandBtn = document.createElement('button');
+            mobileExpandBtn.className = 'mobile-expand-btn';
+            mobileExpandBtn.innerHTML = '⬇️';
+            mobileExpandBtn.title = 'Show details';
+            mobileExpandBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  questCard.classList.toggle('mobile-expanded');
+                  mobileExpandBtn.innerHTML = questCard.classList.contains('mobile-expanded') ? '⬆️' : '⬇️';
+                  mobileExpandBtn.title = questCard.classList.contains('mobile-expanded') ? 'Hide details' : 'Show details';
+            };
+
+            titleRow.appendChild(questTitle);
+            titleRow.appendChild(mobileExpandBtn);
+
+            questHeader.appendChild(titleRow);
             questHeader.appendChild(difficultyTag);
 
             // Quest description
@@ -519,6 +678,9 @@ function loadQuests(index) {
                         setTimeout(() => {
                               const questCompleted = isQuestCompleted(quest, projects[index].title);
                               if (questCompleted) {
+                                    // Mark quest as completed in localStorage
+                                    markQuestAsComplete(index, quest.title);
+
                                     const questDifficulty = getQuestDifficulty(quest);
                                     const xpEarned = getXPByDifficulty(questDifficulty);
 
@@ -528,6 +690,7 @@ function loadQuests(index) {
 
                                     loadProjectGallery();
                                     updateXPBar(); // Update XP display
+                                    loadProjects(); // Refresh project tabs to update completed quest count
                               }
                         }, 100);
                   });
@@ -599,6 +762,7 @@ function loadQuests(index) {
                   loadQuests(currentProjectIndex);
                   loadProjectGallery(); // Refresh gallery to update completed quests card
                   updateXPBar(); // Update XP display
+                  loadProjects(); // Refresh project tabs to update completed quest count
             });
 
             function updateCompleteButtonState() {
@@ -692,29 +856,29 @@ function addQuestFromJSON(json) {
 
 function addProjectFromJSON(json) {
       try {
-      const project = JSON.parse(json);
+            const project = JSON.parse(json);
 
-      if (!project.title || !project.description) {
-            alert("Invalid Project JSON: Must include 'title' and 'description'");
-            return;
-      }
+            if (!project.title || !project.description) {
+                  alert("Invalid Project JSON: Must include 'title' and 'description'");
+                  return;
+            }
 
-      const newProject = {
-            title: project.title,
-            description: project.description,
-            image: project.image || 'https://via.placeholder.com/150x100?text=New+Project',
-            quests: [],
-      };
+            const newProject = {
+                  title: project.title,
+                  description: project.description,
+                  image: project.image || 'https://via.placeholder.com/150x100?text=New+Project',
+                  quests: [],
+            };
 
-      projects.push(newProject);
-      saveProjectsToLocal();
-      loadProjects();
-      closeForm();
+            projects.push(newProject);
+            saveProjectsToLocal();
+            loadProjects();
+            closeForm();
 
-      alert(`Project "${newProject.title}" added!`);
+            alert(`Project "${newProject.title}" added!`);
       } catch (e) {
-      alert("Failed to parse project JSON.");
-      console.error(e);
+            alert("Failed to parse project JSON.");
+            console.error(e);
       }
 }
 
@@ -733,14 +897,40 @@ function openQuestEditForm(projectIndex, quest) {
 }
 
 function deleteQuest(projectIndex, questTitle) {
-      if (!confirm(`Delete quest "${questTitle}"?`)) return;
+      if (!confirm(`Delete quest "${questTitle}"?\n\nThis will permanently remove the quest and all its task progress.`)) return;
 
+      const projectTitle = projects[projectIndex].title;
+      const quest = projects[projectIndex].quests.find(q => q.title === questTitle);
+
+      if (quest) {
+            // Remove all task completion data for this quest
+            if (quest.tasks) {
+                  quest.tasks.forEach(task => {
+                        const key = getTaskKey(projectTitle, questTitle, task);
+                        localStorage.removeItem(key);
+                  });
+            }
+
+            // Remove quest from completed quests list
+            const completed = JSON.parse(localStorage.getItem("completedQuests")) || [];
+            const questId = `${projectTitle}::${questTitle}`;
+            const updatedCompleted = completed.filter(id => id !== questId);
+            localStorage.setItem("completedQuests", JSON.stringify(updatedCompleted));
+      }
+
+      // Remove quest from project
       projects[projectIndex].quests = projects[projectIndex].quests.filter(
             (q) => q.title !== questTitle
       );
 
       saveProjectsToLocal();
       loadQuests(projectIndex);
+      loadProjects(); // Refresh project tabs
+      updateXPBar(); // Update XP since quest data was removed
+
+      if (typeof showNotification === 'function') {
+            showNotification(`Quest "${questTitle}" deleted successfully`, 'success');
+      }
 }
 
 function archiveQuest(projectIndex, questTitle) {
@@ -787,22 +977,22 @@ function unarchiveQuest(projectIndex, questTitle) {
 }
 
 
-function markQuestAsComplete() {
-      const quests = JSON.parse(localStorage.getItem("quests")) || [];
+function markQuestAsComplete(projectIndex, questTitle) {
+      // Get existing completed quests
       const completed = JSON.parse(localStorage.getItem("completedQuests")) || [];
-      const quest = quests.find(q => q.id === questId);
 
+      // Create unique quest identifier
+      const questId = `${projects[projectIndex].title}::${questTitle}`;
 
-      
-      if (quest) {
-            completed.push(quest);
+      // Check if quest is not already marked as completed
+      if (!completed.includes(questId)) {
+            completed.push(questId);
             localStorage.setItem("completedQuests", JSON.stringify(completed));
-
-            const updated = quests.filter(q => q.id !== questId);
-            localStorage.setItem("quests", JSON.stringify(updated));
+            console.log(`Quest "${questTitle}" marked as completed for project "${projects[projectIndex].title}"`);
       }
-      
-      addXP(getXPByDifficulty(currentTask.difficulty))
+
+      // Update XP and progress (this is already handled by getXP() function which checks task completion)
+      updateXPBar();
 }
 // Projects section
 const projects = [];
@@ -836,680 +1026,271 @@ function resetToSampleData() {
       console.log('Reset to sample data complete!');
 }
 
+// Function to load fresh tutorial - called when no valid projects exist
+function loadFreshTutorial() {
+      console.log('🔄 Loading fresh tutorial...');
+
+      // Clear ALL localStorage data
+      localStorage.clear();
+
+      // Reset projects array
+      projects.length = 0;
+
+      // Load only the tutorial project
+      const sampleProjects = getSampleProjects();
+      projects.push(...sampleProjects);
+
+      // Save to localStorage
+      saveProjectsToLocal();
+
+      // Refresh UI
+      loadProjects();
+      updateXPBar();
+      updateDataSummary();
+
+      console.log('✅ Fresh tutorial loaded with', projects.length, 'projects');
+
+      // Show welcome message for new users
+      setTimeout(() => {
+            if (typeof showNotification === 'function') {
+                  showNotification('🎮 Welcome to QuestLog! Start with the tutorial project to learn the basics.', 'success');
+            }
+      }, 1000);
+}
+
+// Force tutorial reset function - can be called manually
+function forceTutorialReset() {
+      console.log('🔄 Forcing tutorial reset...');
+      loadFreshTutorial();
+
+      // Navigate to quest screen and load tutorial
+      showSection('questsScreen');
+      setTimeout(() => {
+            if (projects.length > 0) {
+                  loadQuests(0); // Load the first project (tutorial)
+            }
+      }, 100);
+}
+
+// Mobile testing and detection utilities
+function isMobileDevice() {
+      return window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+function getViewportInfo() {
+      return {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            isMobile: isMobileDevice(),
+            orientation: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait',
+            pixelRatio: window.devicePixelRatio || 1
+      };
+}
+
+function logMobileInfo() {
+      const info = getViewportInfo();
+      console.log('📱 Mobile Info:', info);
+
+      if (info.isMobile) {
+            console.log('✅ Mobile device detected');
+            console.log(`📐 Screen: ${info.width}x${info.height} (${info.orientation})`);
+            console.log(`🔍 Pixel Ratio: ${info.pixelRatio}`);
+      } else {
+            console.log('🖥️ Desktop device detected');
+      }
+
+      return info;
+}
+
+// Mobile-specific optimizations
+function optimizeForMobile() {
+      if (isMobileDevice()) {
+            // Add mobile-specific class to body
+            document.body.classList.add('mobile-device');
+
+            // Optimize quest sidebar for mobile
+            showAllQuestProjects = false; // Start collapsed on mobile
+
+            // Add touch event listeners for better mobile interaction
+            document.addEventListener('touchstart', function() {}, {passive: true});
+
+            console.log('📱 Mobile optimizations applied');
+      }
+}
+
+// Mobile testing utilities (for development)
+function createMobileTestPanel() {
+      const testPanel = document.createElement('div');
+      testPanel.id = 'mobile-test-panel';
+      testPanel.innerHTML = `
+            <div style="position: fixed; top: 80px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 1rem; border-radius: 8px; z-index: 1000; font-size: 0.8rem; max-width: 200px;">
+                  <h4 style="margin: 0 0 0.5rem 0;">📱 Mobile Test</h4>
+                  <div id="viewport-info"></div>
+                  <button onclick="toggleMobileTestPanel()" style="background: #4caf50; border: none; color: white; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; cursor: pointer;">Hide</button>
+            </div>
+      `;
+      document.body.appendChild(testPanel);
+      updateViewportInfo();
+}
+
+function updateViewportInfo() {
+      const info = getViewportInfo();
+      const infoDiv = document.getElementById('viewport-info');
+      if (infoDiv) {
+            infoDiv.innerHTML = `
+                  <div>📐 ${info.width} × ${info.height}</div>
+                  <div>📱 ${info.isMobile ? 'Mobile' : 'Desktop'}</div>
+                  <div>🔄 ${info.orientation}</div>
+                  <div>🔍 ${info.pixelRatio}x</div>
+            `;
+      }
+}
+
+function toggleMobileTestPanel() {
+      const panel = document.getElementById('mobile-test-panel');
+      if (panel) {
+            panel.remove();
+      } else {
+            createMobileTestPanel();
+      }
+}
+
+// Add keyboard shortcut for mobile testing (Ctrl+M)
+document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.key === 'm') {
+            e.preventDefault();
+            toggleMobileTestPanel();
+            console.log('📱 Mobile test panel toggled (Ctrl+M)');
+      }
+});
+
+// Update viewport info on resize
+window.addEventListener('resize', function() {
+      updateViewportInfo();
+      logMobileInfo();
+});
+
+// Create truncated message for mobile with expand option
+function createTruncatedMessage(text) {
+      const maxLength = 300;
+      if (text.length <= maxLength) return text;
+
+      const truncated = text.substring(0, maxLength);
+      const remaining = text.substring(maxLength);
+
+      return `${truncated}...<br><br><button onclick="expandMessage(this)" style="background: var(--color-primary); border: none; color: white; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Read More</button><div class="hidden-text" style="display: none;">${remaining}</div>`;
+}
+
+// Expand truncated message
+function expandMessage(button) {
+      const hiddenText = button.nextElementSibling;
+      if (hiddenText) {
+            hiddenText.style.display = 'block';
+            button.style.display = 'none';
+      }
+}
+
 function getSampleProjects() {
       return [
-            // 🔋 Mechanics/Electrical Projects
+            // 🎯 Welcome Tutorial - Introduction to QuestLog
             {
-                  title: "Electric Skateboard Build",
-                  description: "Complete electric skateboard with 3D-printed components, motor control, battery management, and custom mounting systems. Advanced mechanical and electrical engineering project.",
-                  image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop",
-                  category: "Mechanics/Electrical",
-                  skills: ["3d-printing", "mechanical-engineering", "electronics", "cad-design", "battery-management", "control-systems"],
-                  quests: [
-                        {
-                              title: "Mechanical Design & 3D Printing",
-                              description: "Design and print battery enclosure, motor mounts, and protective components",
-                              tasks: [
-                                    "Design battery enclosure with wire passthroughs",
-                                    "Create motor mounting plates with stress analysis",
-                                    "Design protective motor caps",
-                                    "Print and test fit all components"
-                              ],
-                              skills: ["3d-modeling", "cad-design", "mechanical-engineering"],
-                              rewards: ["CAD expert", "Mechanical designer"]
-                        },
-                        {
-                              title: "Power & Control Systems",
-                              description: "Build battery management, motor control, and charging systems",
-                              tasks: [
-                                    "Design battery pack configuration",
-                                    "Implement speed control electronics",
-                                    "Add regenerative braking system",
-                                    "Create charging port integration"
-                              ],
-                              skills: ["electronics", "battery-technology", "control-systems"],
-                              rewards: ["Power systems expert", "Electronics master"]
-                        }
-                  ]
-            },
-            {
-                  title: "Motor Cap / Mounting Plate for E-Skateboard",
-                  description: "Explored 3D-printing a cap to keep motor wheels secure",
-                  image: "https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=300&h=200&fit=crop",
-                  category: "3D Printing",
-                  quests: [
-                        {
-                              title: "Motor Mount Design",
-                              description: "Design custom motor mounting solution for electric skateboard",
-                              tasks: [
-                                    "Analyze motor specifications",
-                                    "Design mounting plate geometry",
-                                    "Calculate stress and load requirements",
-                                    "Create protective cap design",
-                                    "Optimize for 3D printing"
-                              ],
-                              skills: ["mechanical-design", "3d-modeling", "stress-analysis"],
-                              rewards: ["Motor expert", "Mechanical designer"]
-                        }
-                  ]
-            },
-            {
-                  title: "Hidden Bookshelf Build",
-                  description: "Likely used 3D-printed brackets or fixtures for structural support",
-                  image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=200&fit=crop",
-                  category: "3D Printing",
-                  quests: [
-                        {
-                              title: "Custom Brackets & Fixtures",
-                              description: "Design and print structural components for hidden bookshelf",
-                              tasks: [
-                                    "Measure wall and shelf dimensions",
-                                    "Design hidden mounting system",
-                                    "Create 3D-printed brackets",
-                                    "Test load-bearing capacity",
-                                    "Install and adjust positioning"
-                              ],
-                              skills: ["structural-design", "3d-printing", "woodworking"],
-                              rewards: ["Structural engineer", "Hidden master"]
-                        }
-                  ]
-            },
-            {
-                  title: "Smart Glasses Enclosure (planned)",
-                  description: "Concept for housing electronics and display using custom-printed frames",
-                  image: "https://images.unsplash.com/photo-1574263867128-c97b7c3a8d2d?w=300&h=200&fit=crop",
-                  category: "3D Printing",
-                  quests: [
-                        {
-                              title: "Frame Design Concept",
-                              description: "Conceptual design for smart glasses housing with electronics integration",
-                              tasks: [
-                                    "Research smart glasses form factors",
-                                    "Design frame geometry for comfort",
-                                    "Plan electronics compartments",
-                                    "Design display integration",
-                                    "Create wiring pathways"
-                              ],
-                              skills: ["wearable-design", "3d-modeling", "electronics-integration"],
-                              rewards: ["Wearable designer", "Innovation planner"]
-                        }
-                  ]
-            },
-
-            // 🐍 Python Projects
-            {
-                  title: "El Primo Multi-Agent System",
-                  description: "Built in Python using FastAPI, Telegram bot API, and modular agent scripts",
-                  image: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=300&h=200&fit=crop",
-                  category: "Python",
-                  quests: [
-                        {
-                              title: "FastAPI Backend Development",
-                              description: "Build robust API backend for multi-agent system",
-                              tasks: [
-                                    "Set up FastAPI project structure",
-                                    "Design agent communication protocols",
-                                    "Implement REST API endpoints",
-                                    "Add authentication and security",
-                                    "Create agent management system",
-                                    "Set up database integration"
-                              ],
-                              skills: ["python", "fastapi", "backend-development", "api-design"],
-                              rewards: ["Backend architect", "API master"]
-                        },
-                        {
-                              title: "Telegram Bot Integration",
-                              description: "Connect multi-agent system to Telegram for user interaction",
-                              tasks: [
-                                    "Set up Telegram Bot API",
-                                    "Implement command handlers",
-                                    "Create agent dispatch system",
-                                    "Add conversation management",
-                                    "Implement webhook handling"
-                              ],
-                              skills: ["telegram-api", "webhook-handling", "conversational-ai"],
-                              rewards: ["Bot creator", "Telegram expert"]
-                        },
-                        {
-                              title: "Modular Agent Framework",
-                              description: "Develop flexible framework for agent scripts and behaviors",
-                              tasks: [
-                                    "Design agent base class",
-                                    "Implement plugin system",
-                                    "Create agent lifecycle management",
-                                    "Add inter-agent communication",
-                                    "Build agent monitoring system",
-                                    "Implement dynamic loading"
-                              ],
-                              skills: ["software-architecture", "plugin-systems", "agent-frameworks"],
-                              rewards: ["Architecture master", "Agent designer"]
-                        }
-                  ]
-            },
-            {
-                  title: "QuestBot JSON Quest Generator",
-                  description: "Generates structured task quests based on user input using Python functions",
-                  image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop",
-                  category: "Python",
-                  quests: [
-                        {
-                              title: "Quest Generation Engine",
-                              description: "Build intelligent quest generation system",
-                              tasks: [
-                                    "Design quest data structure",
-                                    "Implement natural language processing",
-                                    "Create task breakdown algorithms",
-                                    "Add difficulty estimation",
-                                    "Build JSON output formatter"
-                              ],
-                              skills: ["nlp", "algorithm-design", "data-structures"],
-                              rewards: ["Quest architect", "NLP specialist"]
-                        }
-                  ]
-            },
-            {
-                  title: "Email Assistant Bot",
-                  description: "Reads, summarizes, and drafts Outlook emails with Python and automation libraries",
-                  image: "https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=300&h=200&fit=crop",
-                  category: "Python",
-                  quests: [
-                        {
-                              title: "Email Integration",
-                              description: "Connect to Outlook and implement email processing",
-                              tasks: [
-                                    "Set up Outlook API authentication",
-                                    "Implement email reading functionality",
-                                    "Create email parsing system",
-                                    "Add attachment handling",
-                                    "Build email sending capabilities"
-                              ],
-                              skills: ["outlook-api", "email-processing", "authentication"],
-                              rewards: ["Email automation expert", "API integrator"]
-                        },
-                        {
-                              title: "AI-Powered Features",
-                              description: "Add intelligent summarization and drafting capabilities",
-                              tasks: [
-                                    "Implement email summarization",
-                                    "Create smart reply generation",
-                                    "Add sentiment analysis",
-                                    "Build priority detection",
-                                    "Implement automated responses"
-                              ],
-                              skills: ["nlp", "ai-integration", "text-analysis"],
-                              rewards: ["AI assistant creator", "Email intelligence"]
-                        }
-                  ]
-            },
-            {
-                  title: "AI Calendar Agent",
-                  description: "Telegram-integrated calendar scheduling bot using Python and Google Calendar API",
+                  title: "Welcome to QuestLog! 🎮",
+                  description: "Learn how to use QuestLog by completing this interactive tutorial. Discover projects, quests, tasks, and XP progression while exploring all the features.",
                   image: "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=300&h=200&fit=crop",
-                  category: "Python",
+                  category: "Other",
+                  type: "project",
+                  skills: ["questlog-basics", "task-management", "project-organization", "productivity"],
                   quests: [
                         {
-                              title: "Calendar API Integration",
-                              description: "Connect to Google Calendar and implement scheduling features",
+                              title: "Getting Started with QuestLog",
+                              description: "Learn the basics of QuestLog and understand the core concepts",
                               tasks: [
-                                    "Set up Google Calendar API",
-                                    "Implement OAuth authentication",
-                                    "Create event management functions",
-                                    "Add recurring event support",
-                                    "Build conflict detection"
+                                    "Check out the XP bar at the top - this shows your progress level",
+                                    "Notice the navigation: Quests, Chat, Projects, and Settings (☰)",
+                                    "Click on different projects in the sidebar to see their quests",
+                                    "Complete this task by checking it off to earn your first XP!"
                               ],
-                              skills: ["google-api", "oauth", "calendar-management"],
-                              rewards: ["Calendar master", "Google API expert"]
-                        }
-                  ]
-            },
-            {
-                  title: "Form Autofill with Web Scraper (n8n)",
-                  description: "Built Python versions of data extractors and form fillers",
-                  image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=300&h=200&fit=crop",
-                  category: "Python",
-                  quests: [
-                        {
-                              title: "Web Scraping System",
-                              description: "Build robust web scraping and form automation system",
-                              tasks: [
-                                    "Set up web scraping framework",
-                                    "Implement data extraction logic",
-                                    "Create form detection system",
-                                    "Add automated form filling",
-                                    "Build error handling and retries"
-                              ],
-                              skills: ["web-scraping", "automation", "data-extraction"],
-                              rewards: ["Scraping expert", "Automation master"]
-                        }
-                  ]
-            },
-            {
-                  title: "Raspberry Pi Projects (MagicMirror, Plant Monitor, etc.)",
-                  description: "Used Python for sensor reading, speech synthesis, and module scripting",
-                  image: "https://images.unsplash.com/photo-1562440499-64c9a4d1e918?w=300&h=200&fit=crop",
-                  category: "Python",
-                  quests: [
-                        {
-                              title: "MagicMirror Python Modules",
-                              description: "Develop custom Python modules for MagicMirror functionality",
-                              tasks: [
-                                    "Set up Raspberry Pi environment",
-                                    "Create sensor reading modules",
-                                    "Implement speech synthesis",
-                                    "Build custom display widgets",
-                                    "Add voice control features"
-                              ],
-                              skills: ["raspberry-pi", "sensors", "speech-synthesis"],
-                              rewards: ["Pi master", "IoT developer"]
+                              skills: ["questlog-basics", "navigation"],
+                              rewards: ["QuestLog Explorer", "First Steps Complete", "100 XP"]
                         },
                         {
-                              title: "Plant Monitoring System",
-                              description: "Build comprehensive plant monitoring with sensors and alerts",
+                              title: "Understanding Projects & Quests",
+                              description: "Learn how projects organize your work into manageable quests",
                               tasks: [
-                                    "Set up soil moisture sensors",
-                                    "Implement temperature monitoring",
-                                    "Create automated watering system",
-                                    "Build mobile notifications",
-                                    "Add data logging and analytics"
+                                    "Create additional projects to see them in the sidebar",
+                                    "Click '▶ View Tasks' on any quest to see its task breakdown",
+                                    "Notice how quests have difficulty ratings (Easy, Medium, Hard, Insane)",
+                                    "Try expanding and collapsing different quest cards",
+                                    "Check the progress bars to see completion status"
                               ],
-                              skills: ["iot", "sensors", "automation", "data-logging"],
-                              rewards: ["Plant tech expert", "IoT innovator"]
-                        }
-                  ]
-            },
-
-            // 🌐 HTML / CSS / JavaScript Projects
-            {
-                  title: "QuestLog App (Gantt-Style Scheduler)",
-                  description: "Custom-built task management system with drag-and-drop, difficulty scaling, and skill trees",
-                  image: "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=300&h=200&fit=crop",
-                  category: "Web Development",
-                  quests: [
-                        {
-                              title: "Gantt Chart Implementation",
-                              description: "Build interactive Gantt-style task scheduler",
-                              tasks: [
-                                    "Design Gantt chart layout",
-                                    "Implement drag-and-drop functionality",
-                                    "Create task dependency system",
-                                    "Add time-based scaling",
-                                    "Build task editing interface"
-                              ],
-                              skills: ["javascript", "css", "ui-design", "data-visualization"],
-                              rewards: ["Scheduler architect", "UI master"]
+                              skills: ["project-management", "quest-organization"],
+                              rewards: ["Project Navigator", "Quest Master", "Organization Pro"]
                         },
                         {
-                              title: "Skill Tree System",
-                              description: "Develop RPG-style skill progression system",
+                              title: "Chat with QuestBot AI Assistant",
+                              description: "Explore the AI-powered chat features and get help with your projects",
                               tasks: [
-                                    "Design skill tree visualization",
-                                    "Implement skill unlocking logic",
-                                    "Create XP calculation system",
-                                    "Add skill prerequisites",
-                                    "Build progress tracking"
+                                    "Click on the '🤖 Chat' navigation tab",
+                                    "Try asking QuestBot a question like 'Help me plan a project'",
+                                    "Ask QuestBot to generate a quest in JSON format",
+                                    "Experiment with different types of questions and requests",
+                                    "Return to this quest and mark this task complete"
                               ],
-                              skills: ["game-design", "javascript", "svg", "progression-systems"],
-                              rewards: ["Game designer", "Progression expert"]
+                              skills: ["ai-assistance", "questbot-interaction"],
+                              rewards: ["AI Collaborator", "QuestBot Friend", "Smart Planning"]
                         },
                         {
-                              title: "Difficulty Scaling System",
-                              description: "Implement dynamic difficulty assessment and scaling",
+                              title: "Explore the Project Gallery",
+                              description: "Discover the full project gallery and filtering features",
                               tasks: [
-                                    "Create difficulty calculation algorithms",
-                                    "Implement task complexity analysis",
-                                    "Build adaptive scheduling",
-                                    "Add performance metrics",
-                                    "Create difficulty visualization"
+                                    "Navigate to the '📁 Projects' section",
+                                    "Try different sorting options: Name, Progress, Skills, Date, Difficulty",
+                                    "Use the skill filter tags to filter projects by technology",
+                                    "Hover over project cards to see detailed information",
+                                    "Try the 'Clear All' button to reset filters"
                               ],
-                              skills: ["algorithms", "data-analysis", "adaptive-systems"],
-                              rewards: ["Algorithm designer", "Adaptive system expert"]
-                        }
-                  ]
-            },
-            {
-                  title: "Portfolio Website",
-                  description: "Includes interactive elements, project cards, and chatbot integration",
-                  image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?w=300&h=200&fit=crop",
-                  category: "Web Development",
-                  quests: [
-                        {
-                              title: "Interactive Portfolio Design",
-                              description: "Create engaging portfolio with interactive elements",
-                              tasks: [
-                                    "Design responsive layout",
-                                    "Implement smooth animations",
-                                    "Create project showcase cards",
-                                    "Add interactive navigation",
-                                    "Build contact form"
-                              ],
-                              skills: ["html", "css", "responsive-design", "animations"],
-                              rewards: ["Portfolio designer", "Animation expert"]
+                              skills: ["project-browsing", "filtering", "discovery"],
+                              rewards: ["Gallery Expert", "Filter Master", "Discovery Champion"]
                         },
                         {
-                              title: "Chatbot Integration",
-                              description: "Integrate AI chatbot for visitor interaction",
+                              title: "Create Your First Project",
+                              description: "Learn to create your own projects and quests",
                               tasks: [
-                                    "Design chat interface",
-                                    "Implement chatbot API integration",
-                                    "Create conversation flows",
-                                    "Add personality and responses",
-                                    "Build chat history system"
+                                    "Click the '➕ Add New Project' card in the project gallery",
+                                    "Fill out the project form with your own idea",
+                                    "Add some skills/technologies you want to learn",
+                                    "Save your project and find it in the gallery",
+                                    "Click on your new project to see its auto-generated quest",
+                                    "Add a custom quest to your project using the '➕ Add New Quest' button"
                               ],
-                              skills: ["chatbot-integration", "api-integration", "conversational-design"],
-                              rewards: ["Chatbot creator", "Conversation designer"]
-                        }
-                  ]
-            },
-            {
-                  title: "Integrated Chat UI for El Primo",
-                  description: "Chat interface styled in HTML/CSS/JS, connected to FastAPI backend",
-                  image: "https://images.unsplash.com/photo-1577563908411-5077b6dc7624?w=300&h=200&fit=crop",
-                  category: "Web Development",
-                  quests: [
-                        {
-                              title: "Chat Interface Development",
-                              description: "Build modern chat UI for El Primo agent system",
-                              tasks: [
-                                    "Design chat interface layout",
-                                    "Implement real-time messaging",
-                                    "Create message type handlers",
-                                    "Add typing indicators",
-                                    "Build agent selection system"
-                              ],
-                              skills: ["frontend-development", "real-time-communication", "ui-design"],
-                              rewards: ["Chat UI expert", "Real-time developer"]
-                        }
-                  ]
-            },
-            {
-                  title: "Brooken Cookie Non-Profit Website",
-                  description: "Work-in-progress website for community food distribution",
-                  image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?w=300&h=200&fit=crop",
-                  category: "Web Development",
-                  quests: [
-                        {
-                              title: "Non-Profit Website Development",
-                              description: "Build community-focused website for food distribution organization",
-                              tasks: [
-                                    "Design accessible layout",
-                                    "Create donation system",
-                                    "Build volunteer registration",
-                                    "Add event calendar",
-                                    "Implement content management"
-                              ],
-                              skills: ["non-profit-development", "accessibility", "community-features"],
-                              rewards: ["Community builder", "Social impact developer"]
-                        }
-                  ]
-            },
-            {
-                  title: "Builder.io / UI Testing Pages",
-                  description: "Experiments with low-code and hand-coded layout exports",
-                  image: "https://images.unsplash.com/photo-1558655146-d09347e92766?w=300&h=200&fit=crop",
-                  category: "Web Development",
-                  quests: [
-                        {
-                              title: "Low-Code Experimentation",
-                              description: "Explore Builder.io capabilities and export functionality",
-                              tasks: [
-                                    "Test Builder.io visual editor",
-                                    "Export layouts to code",
-                                    "Compare low-code vs hand-coded",
-                                    "Test responsive features",
-                                    "Evaluate workflow efficiency"
-                              ],
-                              skills: ["low-code-platforms", "workflow-optimization", "code-generation"],
-                              rewards: ["Low-code expert", "Workflow optimizer"]
-                        }
-                  ]
-            },
-
-            // ⚙️ Mechanics / Electrical Engineering Projects
-            {
-                  title: "Electric Skateboard",
-                  description: "Involves motors, battery packs, mounting plates, wiring, and drivetrain design",
-                  image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop",
-                  category: "Mechanics/Electrical",
-                  quests: [
-                        {
-                              title: "Drivetrain Design",
-                              description: "Design and build the electric drivetrain system",
-                              tasks: [
-                                    "Select motor specifications",
-                                    "Design belt drive system",
-                                    "Calculate gear ratios",
-                                    "Design motor mounts",
-                                    "Test power transmission"
-                              ],
-                              skills: ["mechanical-engineering", "drivetrain-design", "power-transmission"],
-                              rewards: ["Drivetrain engineer", "Power system designer"]
+                              skills: ["project-creation", "quest-design", "goal-setting"],
+                              rewards: ["Project Creator", "Quest Designer", "Goal Setter"]
                         },
                         {
-                              title: "Battery & Power Management",
-                              description: "Build comprehensive power system with battery management",
+                              title: "Master the XP System",
+                              description: "Understand how XP and leveling works in QuestLog",
                               tasks: [
-                                    "Design battery pack configuration",
-                                    "Implement battery management system",
-                                    "Create charging system",
-                                    "Add power monitoring",
-                                    "Build safety systems"
+                                    "Complete several tasks from different quests to earn XP",
+                                    "Watch your XP bar fill up as you complete tasks",
+                                    "Notice how different difficulty quests give different XP amounts",
+                                    "Try completing an entire quest to get the full XP reward",
+                                    "Check your level progress in the top navbar"
                               ],
-                              skills: ["battery-technology", "power-electronics", "safety-systems"],
-                              rewards: ["Battery engineer", "Power management expert"]
+                              skills: ["xp-system", "progression", "achievement"],
+                              rewards: ["XP Master", "Level Up Expert", "Achievement Hunter"]
                         },
                         {
-                              title: "Control & Monitoring System",
-                              description: "Implement electronic control and monitoring systems",
+                              title: "Data Management & Backup",
+                              description: "Learn to save, load, and manage your QuestLog data",
                               tasks: [
-                                    "Design control electronics",
-                                    "Implement speed control",
-                                    "Add regenerative braking",
-                                    "Create monitoring dashboard",
-                                    "Build remote control system"
+                                    "Go to the Start screen (☰ Settings)",
+                                    "Try the 'Save Game' feature to backup your progress",
+                                    "Explore the JSON data format QuestLog uses",
+                                    "Test the 'Load Game' feature (optional - be careful not to lose progress!)",
+                                    "Learn about data backup and restore features"
                               ],
-                              skills: ["control-systems", "electronics", "embedded-programming"],
-                              rewards: ["Control system expert", "Electronics master"]
-                        }
-                  ]
-            },
-            {
-                  title: "Motor Compatibility + Charging Port Research",
-                  description: "Sourcing and configuring physical hardware for board power systems",
-                  image: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=200&fit=crop",
-                  category: "Mechanics/Electrical",
-                  quests: [
-                        {
-                              title: "Component Research & Selection",
-                              description: "Research and select optimal components for electric skateboard",
-                              tasks: [
-                                    "Research motor specifications",
-                                    "Compare charging port options",
-                                    "Analyze compatibility requirements",
-                                    "Source quality components",
-                                    "Test component integration"
-                              ],
-                              skills: ["component-selection", "hardware-research", "system-integration"],
-                              rewards: ["Hardware researcher", "Component expert"]
-                        }
-                  ]
-            },
-            {
-                  title: "CNC Electric Guitar",
-                  description: "Mechanical and electrical design challenge for custom hardware",
-                  image: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=300&h=200&fit=crop",
-                  category: "Mechanics/Electrical",
-                  quests: [
-                        {
-                              title: "CNC Body Manufacturing",
-                              description: "Design and machine custom electric guitar body",
-                              tasks: [
-                                    "Design guitar body in CAD",
-                                    "Create CNC toolpaths",
-                                    "Select appropriate wood",
-                                    "Machine guitar body",
-                                    "Sand and finish surfaces"
-                              ],
-                              skills: ["cnc-machining", "woodworking", "cad-design"],
-                              rewards: ["CNC master", "Guitar builder"]
-                        },
-                        {
-                              title: "Electronics & Hardware",
-                              description: "Install pickups, electronics, and hardware systems",
-                              tasks: [
-                                    "Route pickup cavities",
-                                    "Install pickup systems",
-                                    "Wire electronics",
-                                    "Install bridge and tuners",
-                                    "Set up and adjust"
-                              ],
-                              skills: ["guitar-electronics", "precision-assembly", "audio-systems"],
-                              rewards: ["Guitar electronics expert", "Luthier"]
-                        }
-                  ]
-            },
-            {
-                  title: "Smart Plant Monitoring Device",
-                  description: "Sensors, power management, and communication hardware for agriculture tech",
-                  image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=300&h=200&fit=crop",
-                  category: "Mechanics/Electrical",
-                  quests: [
-                        {
-                              title: "Sensor System Design",
-                              description: "Design comprehensive plant monitoring sensor array",
-                              tasks: [
-                                    "Select appropriate sensors",
-                                    "Design sensor housing",
-                                    "Create data acquisition system",
-                                    "Implement calibration system",
-                                    "Test accuracy and reliability"
-                              ],
-                              skills: ["sensor-technology", "data-acquisition", "agricultural-tech"],
-                              rewards: ["Sensor expert", "AgTech innovator"]
-                        }
-                  ]
-            },
-            {
-                  title: "MagicMirror Hardware Build",
-                  description: "Display mounting, cable routing, Pi integration",
-                  image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&h=200&fit=crop",
-                  category: "Mechanics/Electrical",
-                  quests: [
-                        {
-                              title: "Hardware Integration",
-                              description: "Build and integrate all hardware components for MagicMirror",
-                              tasks: [
-                                    "Mount display behind mirror",
-                                    "Install Raspberry Pi system",
-                                    "Route all cables cleanly",
-                                    "Build frame and housing",
-                                    "Test all connections"
-                              ],
-                              skills: ["hardware-integration", "cable-management", "system-assembly"],
-                              rewards: ["Hardware integrator", "System builder"]
-                        }
-                  ]
-            },
-
-            // 🔋 Robotics / Electrical (Mixed Skills) Projects
-            {
-                  title: "Plant Monitoring Device (Solar + Battery)",
-                  description: "Combines robotics, IoT, and environmental sensing",
-                  image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=300&h=200&fit=crop",
-                  category: "Robotics/IoT",
-                  quests: [
-                        {
-                              title: "Solar Power System",
-                              description: "Design autonomous solar-powered monitoring system",
-                              tasks: [
-                                    "Size solar panel requirements",
-                                    "Design battery backup system",
-                                    "Implement power management",
-                                    "Create weather protection",
-                                    "Add power monitoring"
-                              ],
-                              skills: ["solar-power", "battery-management", "power-systems"],
-                              rewards: ["Solar engineer", "Sustainable tech expert"]
-                        },
-                        {
-                              title: "IoT Integration",
-                              description: "Connect device to cloud services and mobile apps",
-                              tasks: [
-                                    "Implement wireless connectivity",
-                                    "Create cloud data pipeline",
-                                    "Build mobile app interface",
-                                    "Add real-time alerts",
-                                    "Implement data analytics"
-                              ],
-                              skills: ["iot", "cloud-integration", "mobile-development"],
-                              rewards: ["IoT architect", "Connected device expert"]
-                        }
-                  ]
-            },
-            {
-                  title: "Smart Glasses Prototype",
-                  description: "Plans to integrate translation AI, screen display, camera, and battery in compact form",
-                  image: "https://images.unsplash.com/photo-1574263867128-c97b7c3a8d2d?w=300&h=200&fit=crop",
-                  category: "Robotics/IoT",
-                  quests: [
-                        {
-                              title: "Miniaturized Electronics",
-                              description: "Design compact electronics system for wearable device",
-                              tasks: [
-                                    "Select miniaturized components",
-                                    "Design compact PCB layout",
-                                    "Implement power optimization",
-                                    "Create thermal management",
-                                    "Test component integration"
-                              ],
-                              skills: ["miniaturization", "wearable-electronics", "power-optimization"],
-                              rewards: ["Wearable engineer", "Miniaturization expert"]
-                        },
-                        {
-                              title: "AI Translation System",
-                              description: "Implement real-time translation capabilities",
-                              tasks: [
-                                    "Integrate translation APIs",
-                                    "Implement voice recognition",
-                                    "Add text-to-speech output",
-                                    "Create display overlay system",
-                                    "Optimize for real-time performance"
-                              ],
-                              skills: ["ai-integration", "real-time-processing", "translation-tech"],
-                              rewards: ["AI integrator", "Translation tech expert"]
-                        }
-                  ]
-            },
-            {
-                  title: "El Primo Deployment on Raspberry Pi",
-                  description: "Power-efficient, always-on AI assistant hub on local network",
-                  image: "https://images.unsplash.com/photo-1562440499-64c9a4d1e918?w=300&h=200&fit=crop",
-                  category: "Robotics/IoT",
-                  quests: [
-                        {
-                              title: "Edge AI Deployment",
-                              description: "Deploy AI system for local, always-on operation",
-                              tasks: [
-                                    "Optimize AI models for Pi hardware",
-                                    "Implement local inference",
-                                    "Create always-on monitoring",
-                                    "Add automatic restart systems",
-                                    "Optimize power consumption"
-                              ],
-                              skills: ["edge-ai", "model-optimization", "embedded-systems"],
-                              rewards: ["Edge AI expert", "Deployment specialist"]
-                        },
-                        {
-                              title: "Network Hub Integration",
-                              description: "Create local network AI assistant hub",
-                              tasks: [
-                                    "Set up local network services",
-                                    "Implement device discovery",
-                                    "Create API gateway",
-                                    "Add security and authentication",
-                                    "Build monitoring dashboard"
-                              ],
-                              skills: ["network-services", "home-automation", "system-administration"],
-                              rewards: ["Network architect", "Home automation expert"]
+                              skills: ["data-management", "backup", "import-export"],
+                              rewards: ["Data Manager", "Backup Pro", "QuestLog Graduate"]
                         }
                   ]
             }
@@ -1520,6 +1301,8 @@ function getSampleProjects() {
 function getTaskKey(project, quest ,task) {
       return `${project}::${quest}::${task}`;
 }
+let showAllQuestProjects = false;
+
 function loadProjects() {
       // Load project tabs for quests sidebar
       const container = document.getElementById('projectList');
@@ -1529,46 +1312,116 @@ function loadProjects() {
       const completedTab = createCompletedQuestsTab();
       container.appendChild(completedTab);
 
-      projects.forEach((project, index) => {
-            const card = document.createElement('div');
-            card.className = 'project-tab';
-            card.onclick = () => loadQuests(index);
+      const isMobile = window.innerWidth <= 768;
 
-            const projectImage = document.createElement('img');
-            projectImage.src = project.image;
-            projectImage.alt = project.title;
-            projectImage.className = 'project-image';
+      if (isMobile) {
+            // Create simple dropdown for mobile
+            const dropdown = document.createElement('select');
+            dropdown.className = 'mobile-project-selector';
+            dropdown.id = 'mobileProjectSelector';
 
-            const projectInfo = document.createElement('div');
-            projectInfo.className = 'project-info';
+            projects.forEach((project, index) => {
+                  const option = document.createElement('option');
+                  option.value = index;
+                  option.textContent = project.title;
+                  dropdown.appendChild(option);
+            });
 
-            const projectTitle = document.createElement('h3');
-            projectTitle.textContent = project.title;
+            dropdown.addEventListener('change', (e) => {
+                  const selectedIndex = parseInt(e.target.value);
+                  loadQuests(selectedIndex);
+            });
 
-            const projectDesc = document.createElement('p');
-            projectDesc.textContent = project.description;
+            container.appendChild(dropdown);
+      } else {
+            // Desktop: Create regular project tabs
+            const projectsToShow = showAllQuestProjects ? projects : projects.slice(0, 5);
+            const hasMoreProjects = projects.length > 5;
 
-            projectInfo.appendChild(projectTitle);
-            projectInfo.appendChild(projectDesc);
+            projectsToShow.forEach((project, index) => {
+                  const card = document.createElement('div');
+                  card.className = 'project-tab';
+                  card.onclick = () => loadQuests(index);
 
-            card.appendChild(projectImage);
-            card.appendChild(projectInfo);
-            container.appendChild(card);
-      });
+                  const projectImage = document.createElement('img');
+                  projectImage.src = project.image;
+                  projectImage.alt = project.title;
+                  projectImage.className = 'project-image';
 
-      const addButton = document.createElement('div');
-      addButton.className = 'project-tab add-quest-btn';
-      addButton.innerHTML = '<span style="font-size: 1.2rem;">➕</span> Add New Project';
-      addButton.onclick = () => document.getElementById('formOverlay').style.display = 'flex';
-      container.appendChild(addButton);
+                  const projectInfo = document.createElement('div');
+                  projectInfo.className = 'project-info';
+
+                  const projectTitle = document.createElement('h3');
+                  projectTitle.textContent = project.title;
+
+                  const projectDesc = document.createElement('p');
+                  projectDesc.textContent = project.description;
+
+                  projectInfo.appendChild(projectTitle);
+                  projectInfo.appendChild(projectDesc);
+
+                  // Add action buttons to project tabs
+                  const projectActions = document.createElement('div');
+                  projectActions.className = 'project-tab-actions';
+
+                  const editTabBtn = document.createElement('button');
+                  editTabBtn.className = 'project-tab-btn edit-tab-btn';
+                  editTabBtn.innerHTML = '✏️';
+                  editTabBtn.title = 'Edit project';
+                  editTabBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        editProject(index);
+                  };
+
+                  const deleteTabBtn = document.createElement('button');
+                  deleteTabBtn.className = 'project-tab-btn delete-tab-btn';
+                  deleteTabBtn.innerHTML = '🗑️';
+                  deleteTabBtn.title = 'Delete project';
+                  deleteTabBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteProject(index);
+                  };
+
+                  projectActions.appendChild(editTabBtn);
+                  projectActions.appendChild(deleteTabBtn);
+
+                  card.appendChild(projectImage);
+                  card.appendChild(projectInfo);
+                  card.appendChild(projectActions);
+                  container.appendChild(card);
+            });
+
+            // Add "See More/See Less" button if there are more than 5 projects
+            if (hasMoreProjects) {
+                  const seeMoreButton = document.createElement('div');
+                  seeMoreButton.className = 'project-tab quest-see-more-btn';
+                  seeMoreButton.innerHTML = `
+                        <span style="font-size: 1.2rem;">${showAllQuestProjects ? '⬆️' : '⬇️'}</span>
+                        ${showAllQuestProjects ? 'See Less' : `See More (${projects.length - 5} hidden)`}
+                  `;
+                  seeMoreButton.onclick = () => {
+                        showAllQuestProjects = !showAllQuestProjects;
+                        loadProjects();
+                  };
+                  container.appendChild(seeMoreButton);
+            }
+
+            const addButton = document.createElement('div');
+            addButton.className = 'project-tab add-quest-btn';
+            addButton.innerHTML = '<span style="font-size: 1.2rem;">➕</span> Add New Project';
+            addButton.onclick = () => document.getElementById('formOverlay').style.display = 'flex';
+            container.appendChild(addButton);
+      }
 
       // Load project gallery
       loadProjectGallery();
 }
 
-let currentSortBy = 'name';
+let currentSortBy = 'completed';
 let sortAscending = true;
 let selectedSkills = new Set();
+
+let showAllProjects = false;
 
 function loadProjectGallery() {
       const gallery = document.getElementById('projectGallery');
@@ -1579,15 +1432,37 @@ function loadProjectGallery() {
       // Generate skill filter bar
       generateSkillFilterBar();
 
-      // Get sorted and filtered projects
-      const sortedProjects = getSortedProjects();
+      // Get sorted and filtered projects (always sort by completion first)
+      const sortedProjects = getSortedProjectsByCompletion();
       const filteredProjects = filterProjectsBySkills(sortedProjects);
 
+      // Limit to 5 projects unless "see more" is active
+      const projectsToShow = showAllProjects ? filteredProjects : filteredProjects.slice(0, 5);
+      const hasMoreProjects = filteredProjects.length > 5;
+
       // Create project cards
-      filteredProjects.forEach(project => {
+      projectsToShow.forEach(project => {
             const projectCard = createProjectCard(project);
             gallery.appendChild(projectCard);
       });
+
+      // Add "See More/See Less" button if there are more than 5 projects
+      if (hasMoreProjects) {
+            const seeMoreCard = document.createElement('div');
+            seeMoreCard.className = 'project-card see-more-card';
+            seeMoreCard.innerHTML = `
+                  <div class="see-more-content">
+                        <div class="see-more-icon">${showAllProjects ? '⬆️' : '⬇️'}</div>
+                        <h3>${showAllProjects ? 'See Less' : 'See More'}</h3>
+                        <p>${showAllProjects ? 'Show fewer projects' : `View ${filteredProjects.length - 5} more projects`}</p>
+                  </div>
+            `;
+            seeMoreCard.onclick = () => {
+                  showAllProjects = !showAllProjects;
+                  loadProjectGallery();
+            };
+            gallery.appendChild(seeMoreCard);
+      }
 
       // Add "Add New Project" button at the end
       const addProjectCard = document.createElement('div');
@@ -1601,6 +1476,20 @@ function loadProjectGallery() {
       `;
       addProjectCard.onclick = () => document.getElementById('formOverlay').style.display = 'flex';
       gallery.appendChild(addProjectCard);
+}
+
+function getSortedProjectsByCompletion() {
+      const sortedProjects = [...projects];
+
+      sortedProjects.sort((a, b) => {
+            const progressA = calculateProjectProgress(a);
+            const progressB = calculateProjectProgress(b);
+
+            // Sort by completion percentage (highest first)
+            return progressB - progressA;
+      });
+
+      return sortedProjects;
 }
 
 function createProjectCard(project) {
@@ -1617,44 +1506,37 @@ function createProjectCard(project) {
       projectImage.alt = project.title;
       projectImage.className = 'project-image';
 
-      const projectInfo = document.createElement('div');
-      projectInfo.className = 'project-info';
-
-      const projectHeader = document.createElement('div');
-      projectHeader.className = 'project-header';
+      // Bottom section - always visible with title and progress
+      const bottomInfo = document.createElement('div');
+      bottomInfo.className = 'project-bottom-info';
 
       const projectTitle = document.createElement('h3');
+      projectTitle.className = 'project-title';
       projectTitle.textContent = project.title;
+      bottomInfo.appendChild(projectTitle);
 
-      projectHeader.appendChild(projectTitle);
-      projectHeader.appendChild(typeIndicator);
+      // Hover overlay with detailed information
+      const hoverInfo = document.createElement('div');
+      hoverInfo.className = 'project-hover-info';
 
       const projectDesc = document.createElement('p');
       projectDesc.className = 'project-description';
       projectDesc.textContent = project.description;
 
-      // Skills section
+      // Skills section for hover
       const skillsContainer = document.createElement('div');
       skillsContainer.className = 'project-skills';
       const skills = extractProjectSkills(project);
       if (skills.length > 0) {
-            skills.slice(0, 4).forEach(skill => {
+            skills.forEach(skill => {
                   const skillTag = document.createElement('span');
                   skillTag.className = 'skill-tag';
                   skillTag.textContent = skill;
                   skillsContainer.appendChild(skillTag);
             });
-            if (skills.length > 4) {
-                  const moreTag = document.createElement('span');
-                  moreTag.className = 'skill-tag more-skills';
-                  moreTag.textContent = `+${skills.length - 4}`;
-                  skillsContainer.appendChild(moreTag);
-            }
       }
 
-      // Progress bar (only for project type)
-      const bottomSection = document.createElement('div');
-      bottomSection.className = 'project-bottom';
+      // Bottom info content based on project type
 
       if (project.type === 'project' || !project.type) {
             const progressContainer = document.createElement('div');
@@ -1674,12 +1556,12 @@ function createProjectCard(project) {
 
             progressContainer.appendChild(progressLabel);
             progressContainer.appendChild(progressBar);
-            bottomSection.appendChild(progressContainer);
+            bottomInfo.appendChild(progressContainer);
 
             const questCount = document.createElement('div');
             questCount.className = 'quest-count';
             questCount.textContent = `${project.quests?.length || 0} quests`;
-            bottomSection.appendChild(questCount);
+            bottomInfo.appendChild(questCount);
       } else {
             // For non-project types, show creation date or other metadata
             const metaInfo = document.createElement('div');
@@ -1690,15 +1572,58 @@ function createProjectCard(project) {
             }
             if (project.links) {
                   const linkIcon = document.createElement('span');
-                  linkIcon.innerHTML = ' ����';
+                  linkIcon.innerHTML = '🔗';
                   metaInfo.appendChild(linkIcon);
             }
-            bottomSection.appendChild(metaInfo);
+            bottomInfo.appendChild(metaInfo);
       }
 
-      // Add export button for all projects
+      // Difficulty section for projects
+      const difficultyContainer = document.createElement('div');
+      difficultyContainer.className = 'project-difficulty';
+      if (project.type === 'project' || !project.type) {
+            const difficulty = getProjectDifficulty(project);
+            const difficultyText = document.createElement('span');
+            difficultyText.textContent = 'Difficulty: ';
+
+            const difficultyTag = document.createElement('span');
+            difficultyTag.className = `difficulty-tag difficulty-${['easy', 'medium', 'hard', 'insane'][difficulty - 1]}`;
+            difficultyTag.textContent = ['Easy', 'Medium', 'Hard', 'Insane'][difficulty - 1];
+
+            difficultyContainer.appendChild(difficultyText);
+            difficultyContainer.appendChild(difficultyTag);
+      }
+
+      hoverInfo.appendChild(projectDesc);
+      hoverInfo.appendChild(skillsContainer);
+      hoverInfo.appendChild(difficultyContainer);
+
+      // Add project action buttons
+      const buttonContainer = document.createElement('div');
+      buttonContainer.className = 'project-action-buttons';
+
+      const editButton = document.createElement('button');
+      editButton.className = 'project-action-btn project-edit-btn';
+      editButton.innerHTML = '✏️';
+      editButton.title = 'Edit this project';
+      editButton.onclick = (e) => {
+            e.stopPropagation(); // Prevent project card click
+            const projectIndex = projects.findIndex(p => p.title === project.title);
+            editProject(projectIndex);
+      };
+
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'project-action-btn project-delete-btn';
+      deleteButton.innerHTML = '🗑️';
+      deleteButton.title = 'Delete this project';
+      deleteButton.onclick = (e) => {
+            e.stopPropagation(); // Prevent project card click
+            const projectIndex = projects.findIndex(p => p.title === project.title);
+            deleteProject(projectIndex);
+      };
+
       const exportButton = document.createElement('button');
-      exportButton.className = 'project-export-btn';
+      exportButton.className = 'project-action-btn project-export-btn';
       exportButton.innerHTML = '📋';
       exportButton.title = 'Export this project to clipboard';
       exportButton.onclick = (e) => {
@@ -1706,15 +1631,15 @@ function createProjectCard(project) {
             const projectIndex = projects.findIndex(p => p.title === project.title);
             exportProject(projectIndex);
       };
-      bottomSection.appendChild(exportButton);
 
-      projectInfo.appendChild(projectHeader);
-      projectInfo.appendChild(projectDesc);
-      projectInfo.appendChild(skillsContainer);
-      projectInfo.appendChild(bottomSection);
+      buttonContainer.appendChild(editButton);
+      buttonContainer.appendChild(deleteButton);
+      buttonContainer.appendChild(exportButton);
 
       projectCard.appendChild(projectImage);
-      projectCard.appendChild(projectInfo);
+      projectCard.appendChild(bottomInfo);
+      projectCard.appendChild(hoverInfo);
+      projectCard.appendChild(buttonContainer);
 
       // Add click handler
       projectCard.onclick = () => {
@@ -1836,791 +1761,72 @@ function getProjectTypeIcon(type) {
 }
 
 function showProjectDetails(project) {
-      const modal = document.createElement('div');
-      modal.className = 'project-details-modal';
-      modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 1001;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-      `;
-
-      const content = document.createElement('div');
-      content.style.cssText = `
-            background: var(--color-bg-light);
-            border-radius: 12px;
-            padding: 2rem;
-            max-width: 600px;
-            width: 100%;
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid var(--color-accent);
-      `;
-
-      content.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                  <h2 style="color: var(--color-primary); margin: 0;">${getProjectTypeIcon(project.type)} ${project.title}</h2>
-                  <button onclick="this.closest('.project-details-modal').remove()" style="background: none; border: none; color: var(--color-text); font-size: 1.5rem; cursor: pointer;">���</button>
-            </div>
-            <img src="${project.image}" alt="${project.title}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem;">
-            <p style="color: var(--color-text-muted); line-height: 1.6; margin-bottom: 1rem;">${project.description}</p>
-            ${project.skills && project.skills.length > 0 ? `
-                  <div style="margin-bottom: 1rem;">
-                        <h4 style="color: var(--color-primary); margin-bottom: 0.5rem;">Technologies:</h4>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                              ${project.skills.map(skill => `<span style="background: var(--color-accent); color: var(--color-text); padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">${skill}</span>`).join('')}
-                        </div>
-                  </div>
-            ` : ''}
-            ${project.links ? `
-                  <div style="margin-top: 1.5rem;">
-                        <a href="${project.links}" target="_blank" style="background: var(--color-primary); color: white; padding: 0.75rem 1.5rem; border-radius: 6px; text-decoration: none; display: inline-block;">View External Link 🔗</a>
-                  </div>
-            ` : ''}
-      `;
-
-      modal.appendChild(content);
-      document.body.appendChild(modal);
-
-      // Close on background click
-      modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                  modal.remove();
-            }
-      });
-}
-
-function calculateProjectProgress(project) {
-      if (!project.quests || project.quests.length === 0) return 0;
-
-      let totalTasks = 0;
-      let completedTasks = 0;
-
-      project.quests.forEach(quest => {
-            if (quest.tasks) {
-                  quest.tasks.forEach(task => {
-                        totalTasks++;
-                        const key = getTaskKey(project.title, quest.title, task);
-                        if (localStorage.getItem(key) === 'true') {
-                              completedTasks++;
-                        }
-                  });
-            }
-      });
-
-      return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-}
-
-function getCategoryIcon(category) {
-      const icons = {
-            '3D Printing': '🖨️',
-            'Python': '🐍',
-            'Web Development': '🌐',
-            'Mechanics/Electrical': '⚙️',
-            'Robotics/IoT': '����',
-            'Other': '📁'
-      };
-      return icons[category] || '📁';
-}
-
-// Local Storage for Quests
-function saveProjectsToLocal() {
-      localStorage.setItem('projects', JSON.stringify(projects));
-      updateDataSummary(); // Update summary after saving
-}
-
-function loadProjectsFromLocal() {
-const stored = localStorage.getItem('projects');
-if (stored) {
-      try {
-            const parsed = JSON.parse(stored);
-            projects.length = 0;
-            parsed.forEach(p => projects.push(p));
-      } catch (e) {
-            console.error("Failed to load projects:", e);
-      }
-}
-}
-
-// XP Tracker - Calculate XP from completed quests
-function getXP() {
-      let totalXP = 0;
-
-      projects.forEach(project => {
-            if (project.quests) {
-                  project.quests.forEach(quest => {
-                        if (!quest.archived && isQuestCompleted(quest, project.title)) {
-                              // Calculate XP based on quest difficulty
-                              const difficulty = getQuestDifficulty(quest);
-                              totalXP += getXPByDifficulty(difficulty);
-                        }
-                  });
-            }
-      });
-
-      return totalXP;
-}
-
-// Get quest difficulty based on number of tasks
-function getQuestDifficulty(quest) {
-      if (!quest.tasks || quest.tasks.length === 0) return 'easy';
-
-      const taskCount = quest.tasks.length;
-      if (taskCount <= 3) return 'easy';
-      if (taskCount <= 7) return 'medium';
-      if (taskCount <= 11) return 'hard';
-      return 'insane';
-}
-
-function addXP(amount) {
-      // XP is now calculated automatically from completed quests
-      // This function is kept for backward compatibility but doesn't store XP
-      updateXPBar();
-}
-
-
-function updateXPBar() {
-      const xp = getXP();
-      const level = Math.floor(xp / 300); // correct logic
-      const percent = (xp % 300) / 300 * 100;
-
-      const progressBar = document.getElementById('exp-progress');
-      progressBar.style.width = `${percent}%`;
-      progressBar.textContent = `${Math.floor(percent)}%`;
-      document.getElementById('level').textContent = `LVL ${level}`;
-
-      updateDataSummary(); // Update summary when XP changes
-}
-
-
-function getXPByDifficulty(difficulty) {
-      return{
-            easy: 100,
-            medium: 500,
-            hard: 1000,
-            insane: 10000,
-      }[difficulty] || 0;
-}
-
-
-
-
-
-// Focus Task Queue
-
-let currentTask = null;
-let taskQueue = [];
-
-function loadTaskQueue() {
-      const quests = JSON.parse(localStorage.getItem("quests")) || [];
-      const completed = JSON.parse(localStorage.getItem("completedQuests")) || [];
-      const completedIDs = new Set(completed.map(q => q.id));
-
-      taskQueue = [];
-      quests.forEach(q => {
-            if (!completedIDs.has(q.id)) {
-                  const subtasks = q.description.split(/[,\n]/).map(t => t.trim()).filter(Boolean);
-                  subtasks.forEach(task => {
-                        taskQueue.push({ questTitle: q.title, task, id: q.id, difficulty: q.difficulty });
-                  });
-            }
-      });
-}
-
-function showNextTask() {
-      if (taskQueue.length === 0) {
-            loadTaskQueue();
-      }
-
-      currentTask = taskQueue.shift();
-
-      if (!currentTask) {
-            document.getElementById("taskDisplay").classList.add("hidden");
-            alert("🎉 All tasks complete!");
-            return;
-      }
-
-      document.getElementById("currentQuestTitle").textContent = currentTask.questTitle;
-      document.getElementById("currentTaskText").textContent = currentTask.task;
-      document.getElementById("taskDisplay").classList.remove("hidden");
-}
-
-function completeCurrentTask() {
-      addXP(getXPByDifficulty(currentTask.difficulty))
-      showNextTask();
-}
-
-function skipCurrentTask() {
-      taskQueue.push(currentTask);
-      showNextTask();
-}
-
-// AI 
-
-
-let questChat = [];
-let replyCount = 0;
-
-async function sendAIMessage() {
-      const input = document.getElementById("chatInput");
-      const chatLog = document.getElementById("chatMessages");
-      const userMessage = input.value.trim();
-      const selectedPersonality = document.getElementById("personalitySelect")?.value || "wizard";
-
-      if (!userMessage) return;
-
-      
-
-
-      // Show user's message
-      const userMsgDiv = document.createElement('div');
-      userMsgDiv.className = 'message user';
-      userMsgDiv.innerHTML = `<strong>You:</strong> ${userMessage}`;
-      chatLog.appendChild(userMsgDiv);
-
-      input.value = "";
-
-      // Show loading message
-      const loadingDiv = document.createElement('div');
-      loadingDiv.className = 'message bot loading';
-      loadingDiv.innerHTML = `<strong>QuestBot:</strong> <div style="background: var(--color-bg-lighter); padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; color: var(--color-bot);">🤔 Thinking...</div>`;
-      chatLog.appendChild(loadingDiv);
-      chatLog.scrollTop = chatLog.scrollHeight;
-
-      // Call backend API
-      try {
-            const apiUrl =
-                  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-                  ? "http://127.0.0.1:5002/chat"
-                  : "https://api.questlog.com/chat";
-
-            const response = await fetch(apiUrl, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                        input: userMessage,
-                        user_id: "justice",
-                        personality: selectedPersonality
-                  })
-            });
-
-            // Remove loading message
-            chatLog.removeChild(loadingDiv);
-
-            if (!response.ok) {
-                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            const reply = data.response;
-
-            questChat.push({ role: "user", content: userMessage });
-            questChat.push({ role: "assistant", content: reply });
-
-            // Display the AI response from the backend
-            const botMsgDiv = document.createElement('div');
-            botMsgDiv.className = 'message bot';
-            botMsgDiv.innerHTML = `<strong>QuestBot:</strong> <div style="background: var(--color-bg-lighter); padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; color: var(--color-bot); white-space: pre-line;">${reply}</div>`;
-            chatLog.appendChild(botMsgDiv);
-
-            // Handle quest generation if returned
-            if (data.quest) {
-                  console.log("✅ New quest detected:", data.quest);
-                  addQuestFromJSON(JSON.stringify(data.quest));
-            }
-            chatLog.scrollTop = chatLog.scrollHeight;
-            
-            
-
-
-
-      } catch (error) {
-            // Remove loading message on error
-            if (loadingDiv.parentNode) {
-                  chatLog.removeChild(loadingDiv);
-            }
-
-            console.error("Error calling chat API:", error);
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'message bot';
-            let errorMessage = "❌ I'm having some technical difficulties right now. Please try again!";
-
-            // Show more specific error messages
-            if (error.message.includes('Failed to fetch')) {
-                  errorMessage = "🌐 Cannot connect to the chat server. Please check your connection or try again later.";
-            } else if (error.message.includes('HTTP 500')) {
-                  errorMessage = "🔧 The chat server is experiencing issues. Please try again in a moment.";
-            } else if (error.message.includes('HTTP 429')) {
-                  errorMessage = "⏱️ Too many requests. Please wait a moment before trying again.";
-            }
-
-            errorDiv.innerHTML = `<strong>QuestBot:</strong> <div style="color: #f44336; padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem;">${errorMessage}</div>`;
-            chatLog.appendChild(errorDiv);
-      }
-
-
-      input.focus();
-
-      // Select Personality
-      
-
-}
-
-// Initialize chat with welcome message
-function initializeChat() {
-      const chatMessages = document.getElementById('chatMessages');
-      if (chatMessages && chatMessages.children.length === 0) {
-            const welcomeMsg = document.createElement('div');
-            welcomeMsg.className = 'message bot';
-            welcomeMsg.innerHTML = `<strong>QuestBot:</strong> <div style="background: var(--color-bg-lighter); padding: 0.8rem; border-radius: 6px; margin-top: 0.5rem; color: var(--color-bot); white-space: pre-line;">
-🎮 Welcome to QuestBot! 👋
-
-I'm your AI-powered quest management assistant, connected to the El Primo multi-agent system!
-
-📊 **Your Current Status:**
-• Level: ${Math.floor(getXP() / 300)}
-• XP: ${getXP()}
-• Projects: ${projects.length}
-
-🤖 **I can help you with:**
-• Creating and organizing quests
-• Calendar reminders and scheduling
-• Email management
-• Goal setting and quest generation
-• Voice commands and responses
-• General conversation and assistance
-
-Ask me to create a quest, set a reminder, or just chat about your projects!</div>`;
-            chatMessages.appendChild(welcomeMsg);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
-}
-
-function generateBotResponse(userMessage) {
-      const message = userMessage.toLowerCase();
-
-      if (message.includes('quest') || message.includes('task')) {
-            return `Great question about quests! I can help you create and manage quests for your projects. Currently you have ${projects.length} projects with various quests. Would you like me to suggest a new quest for one of your existing projects, or help you create a new project?`;
-      } else if (message.includes('project')) {
-            return `I see you're interested in projects! You currently have these projects: ${projects.map(p => p.title).join(', ')}. Which one would you like to work on, or would you like to start a new project?`;
-      } else if (message.includes('help')) {
-            return `I'm QuestBot, your personal quest management assistant! I can help you:
-
-📝 Create and organize quests for your projects
-🎯 Break down complex goals into manageable tasks
-🏆 Track your progress and achievements
-💡 Suggest new quests based on your interests
-⚡ Manage your XP and leveling system
-
-What would you like to work on today?`;
-      } else if (message.includes('hello') || message.includes('hi')) {
-            return `Hello there, adventurer! 👋 Welcome to your Quest Log. I'm here to help you turn your projects into epic quests. Currently you're level ${Math.floor(getXP() / 300)} with ${getXP()} XP. What quest shall we embark on today?`;
-      } else {
-            return `That's interesting! I'm still learning, but I'd love to help you turn that into a quest or project. Could you tell me more about what you're trying to accomplish? I can help you break it down into manageable tasks and track your progress!`;
-      }
-}
-
-//import/export
-function exportProjects() {
-      const projects = JSON.parse(localStorage.getItem('projects') || '[]');
-      const blob = new Blob([JSON.stringify(projects, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "projects_backup.json";
-      document.body.appendChild(a);
-      a.click();
-}
-
-function importProjects(jsonText) {
-      try {
-            const projects = JSON.parse(jsonText);
-            localStorage.setItem("projects", JSON.stringify(projects));
-            alert("Projects imported!");
-            location.reload();
-      } catch (e) {
-            alert("Failed to import projects.");
-      }
-      }
-
-
-
-// Update data summary display
-function updateDataSummary() {
-      const summary = getDataSummary();
-
-      const statProjects = document.getElementById('statProjects');
-      const statQuests = document.getElementById('statQuests');
-      const statTasks = document.getElementById('statTasks');
-      const statLevel = document.getElementById('statLevel');
-
-      if (statProjects) statProjects.textContent = summary.projects;
-      if (statQuests) statQuests.textContent = summary.quests;
-      if (statTasks) statTasks.textContent = `${summary.completedTasks}/${summary.tasks}`;
-      if (statLevel) statLevel.textContent = summary.level;
-}
-
-// Helper functions for completed quest management
-function isQuestCompleted(quest, projectTitle) {
-      if (!quest.tasks || quest.tasks.length === 0) return false;
-
-      return quest.tasks.every(task => {
-            const key = getTaskKey(projectTitle, quest.title, task);
-            return localStorage.getItem(key) === 'true';
-      });
-}
-
-function getCompletedQuestsCount(projectIndex) {
-      if (!projects[projectIndex] || !projects[projectIndex].quests) return 0;
-
-      return projects[projectIndex].quests.filter(quest =>
-            !quest.archived && isQuestCompleted(quest, projects[projectIndex].title)
-      ).length;
-}
-
-function toggleCompletedQuests(projectIndex) {
-      showCompletedQuests = !showCompletedQuests;
-      loadQuests(projectIndex);
-}
-
-// Create completed quests tab for quest sidebar
-function createCompletedQuestsTab() {
-      const tab = document.createElement('div');
-      tab.className = 'project-tab completed-tab';
-      tab.onclick = () => loadCompletedQuests();
-
-      // Get all completed quests count
-      const allCompletedQuests = [];
-      projects.forEach(project => {
-            if (project.quests) {
-                  project.quests.forEach(quest => {
-                        if (!quest.archived && isQuestCompleted(quest, project.title)) {
-                              allCompletedQuests.push({
-                                    ...quest,
-                                    projectTitle: project.title,
-                                    projectCategory: project.category
-                              });
-                        }
-                  });
-            }
-      });
-
-      const tabImage = document.createElement('div');
-      tabImage.className = 'project-image';
-      tabImage.style.cssText = `
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: white;
-            width: 60px;
-            height: 60px;
-            border-radius: 8px;
-      `;
-      tabImage.innerHTML = '✅';
-
-      const tabInfo = document.createElement('div');
-      tabInfo.className = 'project-info';
-
-      const tabTitle = document.createElement('h3');
-      tabTitle.textContent = 'Completed Quests';
-      tabTitle.style.color = 'var(--color-primary)';
-
-      const tabDesc = document.createElement('p');
-      tabDesc.textContent = `${allCompletedQuests.length} completed quests`;
-
-      tabInfo.appendChild(tabTitle);
-      tabInfo.appendChild(tabDesc);
-
-      tab.appendChild(tabImage);
-      tab.appendChild(tabInfo);
-
-      return tab;
-}
-
-// Load completed quests in the main quest area
-function loadCompletedQuests() {
-      const questList = document.getElementById('questList');
-      questList.innerHTML = '<h2>✅ Completed Quests</h2>';
-
-      // Clear active project index
-      currentProjectIndex = null;
-
-      // Update active tab
-      document.querySelectorAll('.project-tab').forEach(tab => tab.classList.remove('active'));
-      document.querySelector('.completed-tab').classList.add('active');
-
-      // Get all completed quests
-      const allCompletedQuests = [];
-      projects.forEach(project => {
-            if (project.quests) {
-                  project.quests.forEach(quest => {
-                        if (!quest.archived && isQuestCompleted(quest, project.title)) {
-                              allCompletedQuests.push({
-                                    ...quest,
-                                    projectTitle: project.title,
-                                    projectCategory: project.category
-                              });
-                        }
-                  });
-            }
-      });
-
-      if (allCompletedQuests.length === 0) {
-            const emptyState = document.createElement('div');
-            emptyState.style.cssText = `
-                  text-align: center;
-                  color: var(--color-text-muted);
-                  padding: 2rem;
-                  font-style: italic;
-            `;
-            emptyState.innerHTML = 'No completed quests yet.<br>Complete some tasks to see them here!';
-            questList.appendChild(emptyState);
-            return;
-      }
-
-      allCompletedQuests.forEach(quest => {
-            const questCard = document.createElement('div');
-            questCard.className = 'quest-card completed-quest';
-            questCard.style.cssText = `
-                  background: rgba(76, 175, 80, 0.1);
-                  border-left: 4px solid var(--color-primary);
-                  margin-bottom: 1rem;
-                  padding: 1.5rem;
-                  border-radius: 8px;
-            `;
-
-            const questHeader = document.createElement('div');
-            questHeader.className = 'quest-header';
-
-            const questTitle = document.createElement('h3');
-            questTitle.textContent = `✅ ${quest.title}`;
-            questTitle.style.color = 'var(--color-primary)';
-
-            const projectBadge = document.createElement('span');
-            projectBadge.style.cssText = `
-                  background: var(--color-accent);
-                  color: var(--color-text);
-                  padding: 0.2rem 0.6rem;
-                  border-radius: 12px;
-                  font-size: 0.8rem;
-            `;
-            projectBadge.textContent = quest.projectTitle;
-
-            questHeader.appendChild(questTitle);
-            questHeader.appendChild(projectBadge);
-
-            const questDescription = document.createElement('div');
-            questDescription.className = 'quest-description';
-            questDescription.textContent = quest.description || 'No description available';
-            questDescription.style.marginTop = '0.5rem';
-
-            const questMeta = document.createElement('div');
-            questMeta.style.cssText = `
-                  margin-top: 1rem;
-                  display: flex;
-                  gap: 1rem;
-                  font-size: 0.9rem;
-                  color: var(--color-text-muted);
-            `;
-
-            questMeta.innerHTML = `
-                  <span>📝 ${quest.tasks ? quest.tasks.length : 0} tasks completed</span>
-                  <span>🎯 ${quest.skills ? quest.skills.join(', ') : 'No skills'}</span>
-                  <span>🏆 ${quest.rewards ? quest.rewards.join(', ') : 'No rewards'}</span>
-            `;
-
-            questCard.appendChild(questHeader);
-            questCard.appendChild(questDescription);
-            questCard.appendChild(questMeta);
-            questList.appendChild(questCard);
-      });
-}
-
-// Create completed quests card for project gallery
-function createCompletedQuestsCard() {
-      const completedCard = document.createElement('div');
-      completedCard.className = 'project-card completed-quests-card';
-
-      // Get all completed quests from all projects
-      const allCompletedQuests = [];
-      projects.forEach(project => {
-            if (project.quests) {
-                  project.quests.forEach(quest => {
-                        if (!quest.archived && isQuestCompleted(quest, project.title)) {
-                              allCompletedQuests.push({
-                                    ...quest,
-                                    projectTitle: project.title,
-                                    projectCategory: project.category
-                              });
-                        }
-                  });
-            }
-      });
-
-      // Create the card content
-      const cardImage = document.createElement('div');
-      cardImage.className = 'project-image completed-image';
-      cardImage.style.cssText = `
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-            color: white;
-      `;
-      cardImage.innerHTML = '✅';
-
-      const cardInfo = document.createElement('div');
-      cardInfo.className = 'project-info';
-
-      const cardHeader = document.createElement('div');
-      cardHeader.className = 'project-header';
-
-      const cardTitle = document.createElement('h3');
-      cardTitle.textContent = 'Completed Quests';
-      cardTitle.style.color = 'var(--color-primary)';
-
-      const questCount = document.createElement('div');
-      questCount.style.cssText = `
-            color: var(--color-text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-      `;
-      questCount.textContent = `${allCompletedQuests.length} completed quests`;
-
-      // List of completed quests
-      const questsList = document.createElement('div');
-      questsList.style.cssText = `
-            max-height: 200px;
-            overflow-y: auto;
-            font-size: 0.8rem;
-            line-height: 1.4;
-      `;
-
-      if (allCompletedQuests.length > 0) {
-            allCompletedQuests.slice(0, 8).forEach(quest => {
-                  const questItem = document.createElement('div');
-                  questItem.style.cssText = `
-                        margin-bottom: 0.5rem;
-                        padding: 0.3rem;
-                        background: rgba(76, 175, 80, 0.1);
-                        border-radius: 4px;
-                        border-left: 3px solid var(--color-primary);
-                  `;
-                  questItem.innerHTML = `
-                        <strong>${quest.title}</strong><br>
-                        <small style="color: var(--color-text-muted);">${quest.projectTitle}</small>
-                  `;
-                  questsList.appendChild(questItem);
-            });
-
-            if (allCompletedQuests.length > 8) {
-                  const moreItem = document.createElement('div');
-                  moreItem.style.cssText = `
-                        text-align: center;
-                        color: var(--color-text-muted);
-                        font-style: italic;
-                        margin-top: 0.5rem;
-                  `;
-                  moreItem.textContent = `...and ${allCompletedQuests.length - 8} more`;
-                  questsList.appendChild(moreItem);
-            }
-      } else {
-            questsList.innerHTML = '<em style="color: var(--color-text-muted);">No completed quests yet. Complete some tasks to see them here!</em>';
-      }
-
-      cardHeader.appendChild(cardTitle);
-      cardInfo.appendChild(cardHeader);
-      cardInfo.appendChild(questCount);
-      cardInfo.appendChild(questsList);
-
-      completedCard.appendChild(cardImage);
-      completedCard.appendChild(cardInfo);
-
-      // Add click handler to show completed quests view
-      completedCard.onclick = () => {
-            showCompletedQuestsModal(allCompletedQuests);
-      };
-
-      return completedCard;
-}
-
-// Show detailed completed quests modal
-function showCompletedQuestsModal(completedQuests) {
       // Create modal overlay
       const modal = document.createElement('div');
-      modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 1001;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-      `;
+      modal.className = 'project-details-modal';
 
       // Create modal content
       const content = document.createElement('div');
-      content.style.cssText = `
-            background: var(--color-bg-light);
-            border-radius: 12px;
-            padding: 2rem;
-            max-width: 800px;
-            width: 100%;
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid var(--color-accent);
-      `;
+      content.className = 'project-details-content';
 
-      content.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                  <h2 style="color: var(--color-primary); margin: 0;">✅ Completed Quests (${completedQuests.length})</h2>
-                  <button onclick="this.closest('.completed-modal').remove()" style="background: none; border: none; color: var(--color-text); font-size: 1.5rem; cursor: pointer;">✕</button>
-            </div>
-      `;
+      // Modal header
+      const header = document.createElement('div');
+      header.className = 'project-details-header';
 
-      const questsContainer = document.createElement('div');
-      questsContainer.style.cssText = `
-            display: grid;
-            gap: 1rem;
-      `;
+      const title = document.createElement('h2');
+      title.className = 'project-details-title';
+      title.innerHTML = `${getProjectTypeIcon(project.type)} ${project.title}`;
 
-      completedQuests.forEach(quest => {
-            const questDiv = document.createElement('div');
-            questDiv.style.cssText = `
-                  background: rgba(76, 175, 80, 0.1);
-                  border: 1px solid var(--color-primary);
-                  border-radius: 8px;
-                  padding: 1rem;
-            `;
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'project-details-close';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.onclick = () => modal.remove();
 
-            questDiv.innerHTML = `
-                  <h4 style="color: var(--color-primary); margin: 0 0 0.5rem 0;">${quest.title}</h4>
-                  <p style="margin: 0 0 0.5rem 0; color: var(--color-text-muted);">${quest.description || 'No description'}</p>
-                  <div style="font-size: 0.8rem; color: var(--color-text-muted);">
-                        <strong>Project:</strong> ${quest.projectTitle} |
-                        <strong>Tasks:</strong> ${quest.tasks ? quest.tasks.length : 0} completed
+      header.appendChild(title);
+      header.appendChild(closeBtn);
+
+      // Project image
+      const image = document.createElement('img');
+      image.className = 'project-details-image';
+      image.src = project.image;
+      image.alt = project.title;
+
+      // Description
+      const desc = document.createElement('p');
+      desc.className = 'project-details-desc';
+      desc.textContent = project.description;
+
+      // Skills
+      let skillsSection = '';
+      if (project.skills && project.skills.length > 0) {
+            skillsSection = `
+                  <div class="project-details-skills">
+                        <strong>Skills:</strong> ${project.skills.join(', ')}
                   </div>
             `;
-            questsContainer.appendChild(questDiv);
-      });
+      }
 
-      content.appendChild(questsContainer);
+      // External link
+      let linkSection = '';
+      if (project.links) {
+            linkSection = `
+                  <div class="project-details-link">
+                        <a href="${project.links}" target="_blank">View External Link 🔗</a>
+                  </div>
+            `;
+      }
+
+      // Assemble content
+      content.innerHTML = `
+            ${header.outerHTML}
+            ${image.outerHTML}
+            ${desc.outerHTML}
+            ${skillsSection}
+            ${linkSection}
+      `;
+
       modal.appendChild(content);
-      modal.className = 'completed-modal';
+      document.body.appendChild(modal);
 
       // Close on background click
       modal.addEventListener('click', (e) => {
@@ -2628,135 +1834,4 @@ function showCompletedQuestsModal(completedQuests) {
                   modal.remove();
             }
       });
-
-      document.body.appendChild(modal);
-}
-
-// Skill filtering functions
-function generateSkillFilterBar() {
-      const skillFilterTags = document.getElementById('skillFilterTags');
-      if (!skillFilterTags) return;
-
-      // Get all unique skills from all projects
-      const allSkills = new Set();
-      projects.forEach(project => {
-            const projectSkills = extractProjectSkills(project);
-            projectSkills.forEach(skill => allSkills.add(skill));
-      });
-
-      // Clear existing tags
-      skillFilterTags.innerHTML = '';
-
-      // Create skill filter tags (show only top 8 most common skills to reduce clutter)
-      const skillCounts = new Map();
-      projects.forEach(project => {
-            const projectSkills = extractProjectSkills(project);
-            projectSkills.forEach(skill => {
-                  skillCounts.set(skill, (skillCounts.get(skill) || 0) + 1);
-            });
-      });
-
-      const topSkills = Array.from(skillCounts.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 8)
-            .map(entry => entry[0]);
-
-      topSkills.forEach(skill => {
-            const tag = document.createElement('div');
-            tag.className = `skill-filter-tag ${selectedSkills.has(skill) ? 'active' : ''}`;
-            tag.textContent = skill;
-            tag.onclick = () => toggleSkillFilter(skill);
-            skillFilterTags.appendChild(tag);
-      });
-}
-
-function toggleSkillFilter(skill) {
-      if (selectedSkills.has(skill)) {
-            selectedSkills.delete(skill);
-      } else {
-            selectedSkills.add(skill);
-      }
-      loadProjectGallery();
-}
-
-function clearSkillFilters() {
-      selectedSkills.clear();
-      loadProjectGallery();
-}
-
-function filterProjectsBySkills(projects) {
-      if (selectedSkills.size === 0) {
-            return projects; // No filters applied
-      }
-
-      return projects.filter(project => {
-            const projectSkills = extractProjectSkills(project);
-            return Array.from(selectedSkills).some(selectedSkill =>
-                  projectSkills.some(projectSkill =>
-                        projectSkill.toLowerCase().includes(selectedSkill.toLowerCase())
-                  )
-            );
-      });
-}
-
-// Projects preview functions
-function updateProjectsPreview() {
-      const previewProjects = document.getElementById('previewProjects');
-      if (!previewProjects) return;
-
-      previewProjects.innerHTML = '';
-
-      // Get 4 most recent or active projects
-      const recentProjects = projects
-            .slice(0, 4) // Take first 4 projects
-            .filter(project => project.title && project.description);
-
-      recentProjects.forEach(project => {
-            const card = document.createElement('div');
-            card.className = 'preview-project-card';
-            card.onclick = () => {
-                  const projectIndex = projects.findIndex(p => p.title === project.title);
-                  if (project.type === 'project' || !project.type) {
-                        showSection('questsScreen');
-                        setTimeout(() => loadQuests(projectIndex), 100);
-                  } else {
-                        showSection('projectsScreen');
-                  }
-            };
-
-            const title = document.createElement('div');
-            title.className = 'preview-project-title';
-            title.textContent = project.title;
-
-            const desc = document.createElement('div');
-            desc.className = 'preview-project-desc';
-            desc.textContent = project.description.substring(0, 80) + (project.description.length > 80 ? '...' : '');
-
-            const meta = document.createElement('div');
-            meta.className = 'preview-project-meta';
-
-            const category = document.createElement('span');
-            category.textContent = getCategoryIcon(project.category) + ' ' + (project.category || 'Other');
-
-            const progress = document.createElement('span');
-            if (project.type === 'project' || !project.type) {
-                  const progressPercent = calculateProjectProgress(project);
-                  progress.textContent = `${progressPercent}%`;
-            } else {
-                  progress.textContent = getProjectTypeIcon(project.type);
-            }
-
-            meta.appendChild(category);
-            meta.appendChild(progress);
-
-            card.appendChild(title);
-            card.appendChild(desc);
-            card.appendChild(meta);
-            previewProjects.appendChild(card);
-      });
-
-      // Show message if no projects
-      if (recentProjects.length === 0) {
-            previewProjects.innerHTML = '<div style="text-align: center; color: var(--color-text-muted); padding: 2rem;">No projects yet. Create your first project!</div>';
-      }
 }
