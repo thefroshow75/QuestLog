@@ -1,517 +1,594 @@
-// Add Form
+// Quest Log Application Script
+// Created by Justice
+// Version 1.1
+// -----------------------------------
+// 1. State Management
+// 2. Agent Floors
+// 3. Quest Board
+// 4. Chat Interface
+// 5. Helpers & Init
+// -----------------------------------
 
-            function closeQuestForm() {
-                  document.getElementById('questFormOverlay').style.display = 'none';
-            
-            
+const STORAGE_KEY = "quest_log_state_v2";
+
+const API_BASE = window.API_BASE_URL || "http://127.0.0.1:8000";
+const state = {
+      username: "Adventurer",
+      userLevel: 1,
+      activeQuests: [],
+      ai_agents: [],
+      taskQueue: [],
+      conversations: {},
+      messages: {}
+};
+
+let currentAgentId = null;
+
+// 1. State Management
+function loadState() {
+      try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            if (typeof data.username === "string") state.username = data.username;
+            if (typeof data.userLevel === "number") state.userLevel = data.userLevel;
+            if (Array.isArray(data.activeQuests)) state.activeQuests = data.activeQuests;
+            if (Array.isArray(data.ai_agents)) state.ai_agents = data.ai_agents;
+            if (Array.isArray(data.taskQueue)) state.taskQueue = data.taskQueue;
+            if (data.conversations && typeof data.conversations === "object") state.conversations = data.conversations;
+            if (data.messages && typeof data.messages === "object") state.messages = data.messages;
+            if (typeof data.currentAgentId === "string") currentAgentId = data.currentAgentId;
+      } catch (error) {
+            console.warn("Unable to load saved state", error);
+      }
+}
+
+function saveState() {
+      const snapshot = {
+            ...state,
+            currentAgentId
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+}
+
+async function fetchAgents() {
+      try {
+            const response = await fetch(`${API_BASE}/agents`);
+            const data = await response.json();
+            if (response.ok && data.ok && Array.isArray(data.agents)) {
+                  state.ai_agents = data.agents;
+                  saveState();
             }
-            
-            function closeForm() {
-                  document.getElementById('formOverlay').style.display = 'none';
+      } catch (error) {
+            console.error("Failed to fetch agents", error);
+      }
+}
 
+// 2. Agent Floors
+function renderFloors() {
+      const elevator = document.getElementById("Elevator");
+      if (!elevator) return;
+
+      elevator.innerHTML = "";
+      if (!state.ai_agents.length) {
+            elevator.innerHTML = "<p class=\"EmptyMessage\">No agents are registered yet.</p>";
+            return;
+      }
+
+      state.ai_agents.forEach((agent) => {
+            const floor = document.createElement("button");
+            floor.type = "button";
+            floor.className = "Floor";
+            floor.dataset.agentId = agent.agent_id;
+            floor.innerHTML = `
+                  <div class="FloorHeader">
+                        <h3>${agent.name}</h3>
+                        ${agent.avatar ? `<img src="${agent.avatar}" alt="${agent.name}" class="FloorAvatar">` : ""}
+                  </div>
+                  <p class="FloorDescription">${agent.description || ""}</p>
+                  <ul class="FloorTools">${renderToolList(agent.tools)}</ul>
+            `;
+            floor.addEventListener("click", () => selectAgent(agent.agent_id));
+            if (agent.agent_id === currentAgentId) {
+                  floor.classList.add("selected");
+            }
+            elevator.appendChild(floor);
+      });
+
+      if (!currentAgentId && state.ai_agents[0]) {
+            selectAgent(state.ai_agents[0].agent_id);
+      }
+}
+
+function selectAgent(agentId) {
+      if (!agentId) return;
+      currentAgentId = agentId;
+      document.querySelectorAll(".Floor").forEach((floor) => {
+            floor.classList.toggle("selected", floor.dataset.agentId === agentId);
+      });
+
+      const agent = state.ai_agents.find((item) => item.agent_id === agentId);
+      if (agent) {
+            updateAgentPanel(agent);
+            renderToolbar(agent.tools);
+            renderChatHistory(agent.agent_id);
+            saveState();
+      }
+}
+
+function renderToolList(tools) {
+      if (!Array.isArray(tools) || !tools.length) {
+            return "<li class=\"Muted\">No tools registered</li>";
+      }
+      return tools.map((tool) => {
+            if (typeof tool === "string") {
+                  return `<li>${tool}</li>`;
+            }
+            const name = tool.name || tool.id || "Tool";
+            const desc = tool.description ? ` title="${tool.description}"` : "";
+            return `<li${desc}>${name}</li>`;
+      }).join("");
+}
+
+// 3. Quest Board
+function renderQuests() {
+      const questList = document.getElementById("QuestList");
+      if (!questList) return;
+
+      questList.innerHTML = "";
+      if (!state.activeQuests.length) {
+            questList.innerHTML = "<p class=\"EmptyMessage\">No quests yet. Add one to begin!</p>";
+            return;
+      }
+
+      state.activeQuests.forEach((quest) => {
+            const card = document.createElement("article");
+            card.className = "QuestCard";
+            card.dataset.id = quest.id;
+            card.innerHTML = `
+                  <header>
+                        <h3>${quest.title}</h3>
+                        <span class="QuestStatus">${quest.status}</span>
+                  </header>
+                  <p>${quest.description}</p>
+                  <div class="SubTasks" data-subtasks></div>
+                  <div class="QuestActions">
+                        <button type="button" data-action="complete" data-id="${quest.id}">Complete</button>
+                        <button type="button" data-action="fail" data-id="${quest.id}">Fail</button>
+                        <button type="button" data-action="decompose" data-id="${quest.id}">Decompose</button>
+                        <button type="button" data-action="remove" data-id="${quest.id}">Remove</button>
+                  </div>
+            `;
+            questList.appendChild(card);
+      });
+}
+
+async function handleQuestAction(event) {
+      const target = event.target.closest("[data-action]");
+      if (!target) return;
+
+      const questId = target.dataset.id;
+      const action = target.dataset.action;
+      const quest = state.activeQuests.find((item) => item.id === questId);
+      if (!quest) return;
+
+      if (action === "remove") {
+            state.activeQuests = state.activeQuests.filter((item) => item.id !== questId);
+            saveState();
+            renderQuests();
+            return;
+      }
+
+      try {
+            if (action === "complete" || action === "fail") {
+                  const updates = { status: action === "complete" ? "Completed" : "Failed" };
+                  const response = await fetch(`${API_BASE}/tools/use`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                              tool_id: "task_tool",
+                              action: "update_task",
+                              payload: { task: { ...quest }, updates }
+                        })
+                  });
+                  const data = await response.json();
+                  if (!response.ok || !data.ok) throw new Error(data.detail || "Unable to update quest");
+                  Object.assign(quest, data.result);
+                  saveState();
+                  renderQuests();
             }
 
-            function saveNewQuest() {
-                  const title = document.getElementById('newQuestTitle').value
-                  const rawTasks = document.getElementById('newQuestTask').value;
+            if (action === "decompose") {
+                  const response = await fetch(`${API_BASE}/tools/use`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                              tool_id: "QuestBoard",
+                              action: "decompose",
+                              payload: { goal: quest.title }
+                        })
+                  });
+                  const data = await response.json();
+                  if (!response.ok || !data.ok) throw new Error(data.detail || "Unable to decompose quest");
+                  renderSubtasks(questId, data.result.quests || []);
+            }
+      } catch (error) {
+            console.error(error);
+            alert(error.message || "Quest action failed");
+      }
+}
 
-                  if (!title || !rawTasks) return alert("Please fill in all fields");
+function renderSubtasks(questId, quests) {
+      const container = document.querySelector(`.QuestCard[data-id="${questId}"] [data-subtasks]`);
+      if (!container) return;
+      if (!Array.isArray(quests) || !quests.length) {
+            container.innerHTML = "<p class=\"Muted\">No subtasks generated yet.</p>";
+            return;
+      }
+      container.innerHTML = quests.map((item) => `<div class="SubTask">${item.title}</div>`).join("");
+}
 
-                  const newQuest = {
-                        title,
-                        //Splits array of tasks by looking for a comma, splitting them and filtering them in an array
-                        tasks: rawTasks.split(',',).map(t => t.trim()).filter(Boolean)
-                  };
+function setupQuestForm() {
+      const form = document.getElementById("AddQuestForm");
+      const toggleButton = document.getElementById("AddQuestButton");
+      if (!form || !toggleButton) return;
 
-                  projects[currentProjectIndex].quests.push(newQuest);
-                  saveProjectsToLocal()
-                  closeQuestForm();
-                  loadQuests(currentProjectIndex);
-            };
+      toggleButton.addEventListener("click", () => {
+            form.classList.toggle("hidden");
+      });
 
-            
+      form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const title = document.getElementById("NewQuestTitle").value.trim();
+            const description = document.getElementById("NewQuestDescription").value.trim();
+            if (!title || !description) return;
 
-
-            function saveNewProject() {
-                  const title = document.getElementById('newProjectTitle').value;
-                  const desc = document.getElementById('newProjectDesc').value;
-                  const image = document.getElementById('newProjectImage').value;
-
-                  if (!title || !desc) return alert("Please fill all fields");
-
-                  const newProject = {
+            state.activeQuests.unshift({
+                  id: crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
                   title,
-                  description: desc,
-                  image: image || 'https://via.placeholder.com/150x100?text=New+Project',
-                  quests: [],
-                  
-                  };
-                  projects.push(newProject)
-                  saveProjectsToLocal();
-                  closeForm();
-                  loadProjects();
+                  description,
+                  status: "In Progress",
+                  createdAt: Date.now()
+            });
+
+            saveState();
+            renderQuests();
+            form.reset();
+            form.classList.add("hidden");
+      });
+}
+
+// 3a. QuestBoard Task Queue
+async function fetchTaskQueue() {
+      try {
+            const response = await fetch(`${API_BASE}/tasks`);
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.detail || "Unable to fetch task queue");
+            if (Array.isArray(data.tasks)) {
+                  state.taskQueue = data.tasks;
+                  renderTaskQueue();
+                  saveState();
             }
-            
-            
-            // Track Quest
+      } catch (error) {
+            console.error("Failed to fetch task queue", error);
+      }
+}
 
-            let currentProjectIndex = null;
+function renderTaskQueue() {
+      const container = document.getElementById("TaskQueueList");
+      if (!container) return;
 
-            
-            function loadQuests(index) {
-                  const questList = document.getElementById('questList');
-                  questList.innerHTML = `<h2>${projects[index].title} Quests</h2>`;
-                  currentProjectIndex = index;
+      const tasks = Array.isArray(state.taskQueue) ? state.taskQueue : [];
+      if (!tasks.length) {
+            container.innerHTML = "<p class=\"EmptyMessage\">No tasks queued.</p>";
+            return;
+      }
 
-                  projects[index].quests.forEach((quest) => {
-                        const difficulty =  (quest.tasks.length <= 3) ? 'easy'
-                                          : (quest.tasks.length <= 7) ? 'medium'
-                                          : (quest.tasks.length <= 11) ? 'hard'
-                                          : 'insane';
-                        const questDiv = document.createElement('div');
-                        questDiv.className = 'quest-item';
-                        questDiv.onclick = () => questDiv.classList.toggle('active');
+      container.innerHTML = tasks.map((task) => {
+            const status = String(task.status || "pending").toLowerCase();
+            const priority = String(task.priority || "normal").toLowerCase();
+            const toolId = task.tool && task.tool.tool_id ? task.tool.tool_id : "manual";
+            const action = task.tool && task.tool.action ? task.tool.action : "";
+            const toolLabel = action ? `${toolId}.${action}` : toolId;
+            const createdAt = task.created_at ? new Date(task.created_at).toLocaleString() : "";
+            const description = task.description ? `<p class="TaskDescription">${task.description}</p>` : "";
+            const canProcess = status === "pending" || status === "failed";
+            const canCancel = status === "pending" || status === "failed" || status === "in_progress";
+            return `
+                  <article class="TaskCard" data-task-id="${task.id}">
+                        <header class="TaskCardHeader">
+                              <h3>${task.title || task.id}</h3>
+                              <span class="TaskStatus status-${status}">${status.replace("_", " ")}</span>
+                        </header>
+                        <p class="TaskMeta">
+                              Priority: <span class="TaskPriority priority-${priority}">${priority}</span>
+                              • Tool: ${toolLabel}
+                        </p>
+                        ${description}
+                        <p class="TaskMeta">Created by ${task.created_by || "Unknown"}${createdAt ? ` • ${createdAt}` : ""}</p>
+                        <div class="TaskActions">
+                              <button type="button" data-task-action="process" data-task-id="${task.id}"${canProcess ? "" : " disabled"}>Process</button>
+                              <button type="button" data-task-action="cancel" data-task-id="${task.id}"${canCancel ? "" : " disabled"}>Cancel</button>
+                        </div>
+                  </article>
+            `;
+      }).join("");
+}
 
-                        const taskList = document.createElement('ul');
-                        taskList.className = 'quest-tasks';
+function bindTaskQueueEvents() {
+      const list = document.getElementById("TaskQueueList");
+      if (list) list.addEventListener("click", handleTaskQueueAction);
 
-                        const checkboxes = [];
+      const refreshButton = document.getElementById("RefreshTasksButton");
+      if (refreshButton) {
+            refreshButton.addEventListener("click", () => {
+                  fetchTaskQueue();
+            });
+      }
 
-                        quest.tasks.forEach((task) => {
-                              const key = getTaskKey(projects[index].title, quest.title, task);
-                              const isDone = localStorage.getItem(key) === 'true';
+      const processNextButton = document.getElementById("ProcessTaskButton");
+      if (processNextButton) {
+            processNextButton.addEventListener("click", () => {
+                  processQueueTask();
+            });
+      }
+}
 
-                              const li = document.createElement('li');
-                              li.className = isDone ? 'completed' : '';
+async function processQueueTask(taskId = null) {
+      try {
+            const payload = taskId ? { task_id: taskId } : { limit: 1 };
+            const response = await fetch(`${API_BASE}/tasks/process`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.detail || "Unable to process task");
 
-                              const checkbox = document.createElement('input');
-                              checkbox.type = 'checkbox';
-                              checkbox.className = 'task-check';
-                              checkbox.checked = isDone;
-                              checkbox.dataset.key = key;
+            const entries = Array.isArray(data.processed) ? data.processed : [];
+            entries.forEach((entry) => notifyTaskUpdate(entry, taskId || "next task"));
+            await fetchTaskQueue();
+      } catch (error) {
+            console.error("Failed to process task", error);
+            appendMessage("System", error.message || "Failed to process task");
+      }
+}
 
-                              
+async function cancelQueueTask(taskId) {
+      try {
+            const response = await fetch(`${API_BASE}/tasks/${taskId}/cancel`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.detail || "Unable to cancel task");
+            notifyTaskUpdate({ task: { ...data.task, status: "cancelled" } }, taskId);
+            await fetchTaskQueue();
+      } catch (error) {
+            console.error("Failed to cancel task", error);
+            appendMessage("System", error.message || "Failed to cancel task");
+      }
+}
 
-                              checkbox.addEventListener('click', (e) => {
-                                    e.stopPropagation(); 
-                              });
+async function handleTaskQueueAction(event) {
+      const button = event.target.closest("[data-task-action]");
+      if (!button) return;
+      const taskId = button.dataset.taskId;
+      const action = button.dataset.taskAction;
+      if (!taskId || !action) return;
 
-                              checkbox.addEventListener('change', () => {
-                                    localStorage.setItem(key, checkbox.checked);
-                                    li.classList.toggle('completed', checkbox.checked);
-                                    updateCompleteButtonState();
-                              });
+      if (action === "process") {
+            await processQueueTask(taskId);
+      }
+      if (action === "cancel") {
+            await cancelQueueTask(taskId);
+      }
+}
 
-                              li.appendChild(checkbox);
-                              li.append(" " + task);
-                              taskList.appendChild(li);
-                              checkboxes.push(checkbox);
-                        });
-
-                        const completeButton = document.createElement('button');
-                        completeButton.textContent = "✅ Complete Quest";
-                        completeButton.className = 'complete-quest-btn';
-                        completeButton.disabled = true;
-
-                        completeButton.addEventListener('click', (e) => {
-                              e.stopPropagation(); // ⛔ prevent quest toggle
-                              addXP(getXPByDifficulty(difficulty));
-                              alert(`Quest Complete! You earned ${getXPByDifficulty(difficulty)} XP!`);
-                              markQuestAsComplete(index, quest.title);
-                              loadQuests(currentProjectIndex);
-                        });
-
-
-                        function updateCompleteButtonState() {
-                              const allChecked = checkboxes.every(cb => cb.checked);
-                              completeButton.disabled = !allChecked;
-                        }
-
-                        updateCompleteButtonState(); // initial state check
-
-                        questDiv.innerHTML = `<strong>${quest.title}</strong>`;
-                        questDiv.appendChild(taskList);
-                        questDiv.appendChild(completeButton);
-                        questList.appendChild(questDiv);
-                  });
-
-                  // Add Quest Button
-                  const addQuestButton = document.createElement('div');
-                  addQuestButton.className = 'quest-item';
-                  addQuestButton.style.background = '#2c3e50';
-                  addQuestButton.innerHTML = '<strong>+ Add New Quest</strong>';
-                  addQuestButton.onclick = () => document.getElementById('questFormOverlay').style.display = 'flex';
-                  questList.appendChild(addQuestButton);
+function notifyTaskUpdate(entry, fallbackTitle) {
+      if (!entry) return;
+      const task = entry.task || {};
+      const title = task.title || fallbackTitle || task.id || "Task";
+      const status = String(task.status || (entry.error ? "failed" : "updated")).replace("_", " ");
+      let summary = `Task '${title}' is now ${status}.`;
+      if (entry.error) {
+            summary += ` Error: ${entry.error}`;
+      } else if (entry.result) {
+            try {
+                  const snippet = typeof entry.result === "string"
+                        ? entry.result
+                        : JSON.stringify(entry.result).slice(0, 160);
+                  if (snippet) summary += ` Result: ${snippet}`;
+            } catch (serializationError) {
+                  console.warn("Unable to stringify task result", serializationError);
             }
+      }
+      appendMessage("System", summary);
+}
 
-            function addQuestFromJSON(json) {
-                  try {
-                  
+// 4. Chat Interface
+function updateAgentPanel(agent) {
+      const panel = document.getElementById("AI");
+      if (!panel) return;
+      panel.querySelector("h1").innerText = agent.name;
+      panel.querySelector("p").innerText = agent.description || "";
+}
 
-                  let quest = JSON.parse(json);
+function renderToolbar(tools) {
+      const toolBar = document.getElementById("ToolBar");
+      if (!toolBar) return;
+      toolBar.innerHTML = "";
 
-                  // Handle nested { quest: { ... } } structure
-                  if (quest.quest) quest = quest.quest;
+      if (!Array.isArray(tools) || !tools.length) {
+            toolBar.innerHTML = "<p class=\"Muted\">This agent has no tools available.</p>";
+            return;
+      }
+
+      tools.forEach((tool) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            const name = typeof tool === "string" ? tool : (tool.name || tool.id || "Tool");
+            button.innerText = name;
+            button.title = typeof tool === "object" && tool.description ? tool.description : name;
+            button.disabled = true; // placeholder until direct tool usage is implemented from the UI
+            toolBar.appendChild(button);
+      });
+}
+
+function appendMessage(sender, text) {
+      const log = document.getElementById("chatLog");
+      if (!log) return;
+      const entry = document.createElement("div");
+      entry.className = "Message";
+      entry.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+}
+function renderChatHistory(agentId) {
+      const log = document.getElementById("chatLog");
+      if (!log) return;
+      log.innerHTML = "";
+      const history = state.messages[agentId] || [];
+      history.forEach((entry) => {
+            appendMessage(entry.sender, entry.text);
+      });
+}
+
+function recordMessage(agentId, sender, text) {
+      if (!agentId) {
+            appendMessage(sender, text);
+            return;
+      }
+      if (!state.messages[agentId]) {
+            state.messages[agentId] = [];
+      }
+      state.messages[agentId].push({ sender, text });
+      appendMessage(sender, text);
+      saveState();
+}
 
 
-                  // Validate structure
 
-                  console.log("Received quest object from GPT:", quest);
+function appendQuestSummary(agentName, payload) {
+      const log = document.getElementById("chatLog");
+      if (!log || !payload || !Array.isArray(payload.quests) || !payload.quests.length) return;
+      const block = document.createElement("div");
+      block.className = "Message QuestSummary";
+      block.innerHTML = `
+            <strong>${agentName} proposes:</strong>
+            <ul>${payload.quests.map((quest) => `<li>${quest.title}</li>`).join("")}</ul>
+      `;
+      log.appendChild(block);
+      log.scrollTop = log.scrollHeight;
+}
 
-                  if (!quest.title || !Array.isArray(quest.tasks)) {
-                        alert("Invalid Quest Format: Must include 'title' and 'tasks' array.");
-                        return;
+async function chatHandler() {
+      const input = document.getElementById("userInput");
+      if (!input) return;
+      const message = input.value.trim();
+      if (!message) return;
+      if (!currentAgentId) {
+            alert("Select an agent first");
+            return;
+      }
+
+      const conversationId = state.conversations[currentAgentId] || null;
+      recordMessage(currentAgentId, state.username, message);
+      input.value = "";
+
+      try {
+            const response = await fetch(`${API_BASE}/chat`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                        agent_id: currentAgentId,
+                        message,
+                        user: state.username,
+                        conversation_id: conversationId
+                  })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.detail || "Agent failed to respond");
+
+            const nextConversationId = data.response?.conversation_id;
+            if (typeof nextConversationId === "string" && nextConversationId) {
+                  state.conversations[currentAgentId] = nextConversationId;
+                  saveState();
+            }
+            const agentMeta = state.ai_agents.find((agent) => agent.agent_id === currentAgentId);
+            const agentName = agentMeta ? agentMeta.name : "Agent";
+            recordMessage(currentAgentId, agentName, data.response?.text || "(No response)");
+            appendQuestSummary(agentName, data.response);
+
+            const queuedTasks = Array.isArray(data.response?.queued_tasks) ? data.response.queued_tasks : [];
+            if (queuedTasks.length) {
+                  const titles = queuedTasks
+                        .map((task) => task.title || (task.tool ? `${task.tool.tool_id || ""}.${task.tool.action || ""}` : task.id))
+                        .filter(Boolean);
+                  appendMessage(
+                        "System",
+                        `${agentName} queued ${queuedTasks.length} task${queuedTasks.length > 1 ? "s" : ""}${titles.length ? `: ${titles.join(", ")}` : "."}`
+                  );
+                  fetchTaskQueue();
+            }
+      } catch (error) {
+            console.error(error);
+            appendMessage("System", error.message || "Something went wrong chatting with the agent");
+      }
+}
+
+function bindChatEvents() {
+      const sendButton = document.getElementById("SendButton");
+      const input = document.getElementById("userInput");
+      if (sendButton) sendButton.addEventListener("click", chatHandler);
+      if (input) {
+            input.addEventListener("keydown", (event) => {
+                  if (event.key === "Enter") {
+                        event.preventDefault();
+                        chatHandler();
                   }
+            });
+      }
+}
+
+// 5. Helpers & Init
+function updateProfile() {
+      document.getElementById("Username").innerText = state.username;
+      document.getElementById("UserLevel").innerText = `Level ${state.userLevel}`;
+}
+
+function bindQuestListEvents() {
+      const questList = document.getElementById("QuestList");
+      if (questList) questList.addEventListener("click", handleQuestAction);
+}
+
+async function initApp() {
+      loadState();
+      updateProfile();
+      bindQuestListEvents();
+      setupQuestForm();
+      bindTaskQueueEvents();
+      bindChatEvents();
+      renderQuests();
+      renderTaskQueue();
+
+      if (!state.ai_agents.length) {
+            await fetchAgents();
+      } else {
+            // refresh in background to capture any new agents
+            fetchAgents().then(() => {
+                  renderFloors();
+            });
+      }
+
+      renderFloors();
+      fetchTaskQueue();
+      setInterval(() => {
+            fetchTaskQueue();
+      }, 20000);
+}
+
+document.addEventListener("DOMContentLoaded", initApp);
 
-                  // Use medium as fallback difficulty
-                  const validatedQuest = {
-                        title: quest.title,
-                        description: quest.description || "",
-                        difficulty: quest.difficulty || "medium",
-                        tasks: quest.tasks.map(t => t.trim()).filter(Boolean),
-                  };
 
-                  // Add to current project
-                  if (currentProjectIndex === null) {
-                        let defaultIndex = projects.findIndex(p => p.title === "QuestBot's Log");
-                        
-                        if (defaultIndex === -1) {
-                              // Create QuestBot's Log if it doesn't exist
-                              const newProject = {
-                                    title: "QuestBot's Log",
-                                    description: "Auto-generated quests from your AI assistant.",
-                                    image: "https://via.placeholder.com/150x100?text=QuestBot",
-                                    quests: []
-                              };
-                              projects.push(newProject);
-                              saveProjectsToLocal();
-                              loadProjects();
-                              defaultIndex = projects.length - 1;
-                        }
-
-                        currentProjectIndex = defaultIndex;
-                  }
-
-                  projects[currentProjectIndex].quests.push(validatedQuest);
-                  saveProjectsToLocal();
-                  loadQuests(currentProjectIndex);
-
-                  alert(`Quest "${validatedQuest.title}" added!`);
-                  } catch (e) {
-                  alert("Failed to parse JSON. Check your syntax.");
-                  console.error(e);
-                  }
-            }
-
-            function addProjectFromJSON(json) {
-                  try {
-                  const project = JSON.parse(json);
-
-                  if (!project.title || !project.description) {
-                        alert("Invalid Project JSON: Must include 'title' and 'description'");
-                        return;
-                  }
-
-                  const newProject = {
-                        title: project.title,
-                        description: project.description,
-                        image: project.image || 'https://via.placeholder.com/150x100?text=New+Project',
-                        quests: [],
-                  };
-
-                  projects.push(newProject);
-                  saveProjectsToLocal();
-                  loadProjects();
-                  closeForm();
-
-                  alert(`Project "${newProject.title}" added!`);
-                  } catch (e) {
-                  alert("Failed to parse project JSON.");
-                  console.error(e);
-                  }
-            }
-
-
-
-
-            function markQuestAsComplete() {
-                  const quests = JSON.parse(localStorage.getItem("quests")) || [];
-                  const completed = JSON.parse(localStorage.getItem("completedQuests")) || [];
-                  const quest = quests.find(q => q.id === questId);
-
-
-                  
-                  if (quest) {
-                        completed.push(quest);
-                        localStorage.setItem("completedQuests", JSON.stringify(completed));
-
-                        const updated = quests.filter(q => q.id !== questId);
-                        localStorage.setItem("quests", JSON.stringify(updated));
-                  }
-                  
-                  addXP(getXPByDifficulty(currentTask.difficulty))
-            }
-            // Projects section
-            const projects = [];
-
-
-            
-
-            function getProjects() {
-                  const stored = localStorage.getItem('projects');
-                  if (stored) {
-                        try {
-                              return JSON.parse(stored);
-                        } catch (e) {
-                              console.error("failed to load saved projects");
-                        }
-                        
-                  }
-                  
-                  return [];
-            }
-            
-            
-            function getTaskKey(project, quest ,task) {
-                  return `${project}::${quest}::${task}`;
-            }
-            function loadProjects() {
-                  const container = document.getElementById('categoryList');
-                  container.innerHTML = '';
-                  projects.forEach((project, index) => {
-                  const card = document.createElement('div');
-                  card.className = 'project-tab';
-                  card.innerHTML = `
-                        <img src="${project.image}" alt="${project.title}" class="project-image" />
-                        <h3>${project.title}</h3>
-                        <p>${project.description}</p>
-                        `;
-                  card.onclick = () => loadQuests(index);
-                  container.appendChild(card);
-                  });
-                  const addButton = document.createElement('div');
-                  addButton.className = 'project-tab';
-                  addButton.innerHTML = '<strong>+ Add New Project</strong>';
-                  addButton.onclick = () => document.getElementById('formOverlay').style.display = 'flex';
-                  container.appendChild(addButton);
-            }
-            
-            // Local Storage for Quests
-            function saveProjectsToLocal() {
-                  localStorage.setItem('projects', JSON.stringify(projects));
-            }
-
-            function loadProjectsFromLocal() {
-            const stored = localStorage.getItem('projects');
-            if (stored) {
-                  try {
-                        const parsed = JSON.parse(stored);
-                        projects.length = 0;
-                        parsed.forEach(p => projects.push(p));
-                  } catch (e) {
-                        console.error("Failed to load projects:", e);
-                  }
-            }
-            }
-
-            // XP Tracker
-            function getXP() {
-                  return parseInt(localStorage.getItem('totalXP') || '0', 10);
-            }
-
-            function addXP(amount) {
-                  let xp = parseInt(localStorage.getItem("totalXP") || "0");
-                  xp += amount;
-                  localStorage.setItem("totalXP", xp);
-
-                  updateXPBar();
-
-            }
-
-
-            function updateXPBar() {
-                  const xp = getXP();
-                  const level = Math.floor(xp / 300); // correct logic
-                  const percent = (xp % 300) / 300 * 100;
-
-                  document.getElementById('exp-progress').style.width = `${percent}%`;
-                  document.getElementById('exp-progress').textContent = `${Math.floor(percent)}%`;
-                  document.getElementById('level').textContent = `LVL ${level}`;
-            }
-
-
-            function getXPByDifficulty(difficulty) {
-                  return{
-                        easy: 100,
-                        medium: 500,
-                        hard: 1000,
-                        insane: 10000,
-                  }[difficulty] || 0;
-            }
-
-            
-
-            
-            // Load Projects on Page Start      
-
-            window.onload = () => {
-                  const loaded = getProjects();
-                  projects.push(...loaded);
-                  loadProjects();
-                  updateXPBar();
-            };
-
-            // Focus Task Queue
-
-            let currentTask = null;
-            let taskQueue = [];
-
-            function loadTaskQueue() {
-                  const quests = JSON.parse(localStorage.getItem("quests")) || [];
-                  const completed = JSON.parse(localStorage.getItem("completedQuests")) || [];
-                  const completedIDs = new Set(completed.map(q => q.id));
-
-                  taskQueue = [];
-                  quests.forEach(q => {
-                        if (!completedIDs.has(q.id)) {
-                              const subtasks = q.description.split(/[,\n]/).map(t => t.trim()).filter(Boolean);
-                              subtasks.forEach(task => {
-                                    taskQueue.push({ questTitle: q.title, task, id: q.id, difficulty: q.difficulty });
-                              });
-                        }
-                  });
-            }
-            
-            function showNextTask() {
-                  if (taskQueue.length === 0) {
-                        loadTaskQueue();
-                  }
-
-                  currentTask = taskQueue.shift();
-
-                  if (!currentTask) {
-                        document.getElementById("taskDisplay").classList.add("hidden");
-                        alert("🎉 All tasks complete!");
-                        return;
-                  }
-
-                  document.getElementById("currentQuestTitle").textContent = currentTask.questTitle;
-                  document.getElementById("currentTaskText").textContent = currentTask.task;
-                  document.getElementById("taskDisplay").classList.remove("hidden");
-            }
-
-            function completeCurrentTask() {
-                  addXP(getXPByDifficulty(currentTask.difficulty))
-                  showNextTask();
-            }
-
-            function skipCurrentTask() {
-                  taskQueue.push(currentTask);
-                  showNextTask();
-            }
-
-            // AI 
-
-            /* document.getElementById("toggleAIButton").addEventListener("click", () => {
-                  const sidebar = document.getElementById("categoryList");
-                  const chat = document.getElementById("aiChatPanel");
-
-                  sidebar.classList.toggle("hidden");
-                  chat.classList.toggle("hidden");
-            }); 
-            */
-            let questChat = [];
-            let replyCount = 0;
-
-            async function sendAIMessage() {
-                  const input = document.getElementById("chatInput");
-                  const chatLog = document.getElementById("chatLog");
-                  const userMessage = input.value.trim();
-                  const selectedPersonality = document.getElementById("personalitySelect")?.value || "wizard";
-
-                  if (!userMessage) return;
-
-                  
-
-
-                  // Show user's message
-                  chatLog.innerHTML += `<div><strong>You:</strong> ${userMessage}</div>`;
-                  questChat.push({ role: "user", content: userMessage });
-                  input.value = "";
-                  replyCount++;
-
-                  const isFinal = replyCount >= 3;
-
-
-                  // Call OpenAI
-                  try {
-                        console.log("🧪 Sending to QuestBot:", {
-                              messages: questChat,
-                              personality: selectedPersonality
-                        });
-                        const response = await fetch("http://localhost:5001/questbot", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                    messages: questChat,
-                                    personality: selectedPersonality,
-                                    ready_for_quest: isFinal,
-                              })
-                        });
-
-                        const data = await response.json();
-                        const reply = data.reply;
-
-                        // Console Log Test Case
-
-                        chatLog.innerHTML += `<div><strong>QuestBot:</strong><pre style="background:#222; padding:0.5rem; color:#4CAF50;">${reply}</pre></div>`;
-                        chatLog.scrollTop = chatLog.scrollHeight;
-
-                        questChat.push({ role: "assistant", content: reply });
-
-                        // Try parsing and adding quest
-
-                        if (isFinal) {
-                              
-                              const jsonStart = reply.indexOf("{");
-                              const jsonEnd = reply.lastIndexOf("}");
-
-                              if (jsonStart !== -1 && jsonEnd !== -1) {
-                                    const jsonText = reply.slice(jsonStart, jsonEnd + 1);
-                                    try {
-                                          const quest = JSON.parse(jsonText);
-                                          addQuestFromJSON(quest);
-                                          replyCount = 0;
-                                          questChat = [];
-                                    } catch (e) {
-                                          console.error("❌ JSON parsing failed:", e);
-                                    }
-                              } else {
-                                    console.warn("⚠️ No JSON block found in reply.");
-                              }
-                        }
-
-                        chatLog.scrollTop = chatLog.scrollHeight;
-                        
-                        
-
-
-
-                  } catch (error) {
-                        console.error("Error calling OpenAI:", error);
-                        chatLog.innerHTML += `<div style="color:red;">❌ Error reaching GPT API</div>`;
-                  }
-
-
-                  input.focus();
-
-                  // Select Personality
-                  
-
-            }
-
-            
-
-
-
-            

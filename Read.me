@@ -1,0 +1,71 @@
+QuestLog MK2
+
+QuestLog is a gamified productivity and personal project management system that transforms everyday goals into quests. Inspired by RPG mechanics, QuestLog integrates AI assistants, a quest board, and persistent storage to make organizing life both fun and engaging.
+
+🎯 Goals
+
+      Gamify Productivity: Turn real-world tasks into quests with levels, rewards, and progression.
+
+      AI Integration: Use AI agents as quest givers, guides, and chat companions.
+
+      Cross-Device Persistence: Store quests and user progress in Supabase, accessible from any device.
+
+      Customizable Tools: Provide extensible toolbars where new functions and AI personalities can be added.
+
+      User Engagement: Deliver a clean, interactive UI that makes task management feel like a game.
+
+🛠️ Development Process
+
+      Frontend Setup
+
+            Built using HTML, CSS, and JavaScript.
+
+            Includes sections for the Elevator (floors/projects), Room (AI chat + tools), and Quests (active quest list + add quest form).
+
+            Styled with a clean UI layout, modular components, and hover states for interactive buttons.
+
+      Quest Management System
+
+            Quests are stored and retrieved from Supabase (quests table).
+
+            Features include:
+
+            Adding new quests.
+
+            Completing/removing quests.
+
+            Auto-refreshing the quest board on updates.
+
+      AI Integration
+
+            Backend built with Flask (Agent1.py) to handle chat requests.
+
+            Uses OpenAI GPT-4o-mini to generate witty, helpful AI responses.
+
+            Frontend (script.js) communicates with the Python agent through a REST API at http://localhost:5000/chat .
+
+      User Data Persistence
+
+            User profiles (username, level, quests) are synced with Supabase.
+
+            Data is also cached in localStorage for faster UI updates.
+
+      Interactive UI
+
+            AI agents dynamically load their names, descriptions, and available tools into the toolbar.
+
+            Quests are displayed in cards with title, description, and completion buttons.
+
+            Hidden forms (like the Add Quest form) toggle on demand for smooth UX.
+
+📖 Features
+
+      AI Chat: Interact with Agent1 or future AI personalities as if they were NPC quest givers.
+
+      Quest Board: Create, view, and complete quests.
+
+      Persistent Storage: Quests tied to user accounts in Supabase.
+
+      Leveling System (Planned): Track XP and level progression.
+
+      Multiple Floors (Planned): Organize projects across different themed floors (e.g., Executive, Library, Workshop).

@@ -1,224 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>QuestLog</title>
-      <link rel="stylesheet" href="style.css" />
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Quest Log MK2</title>
+      <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-      <header>
+      <nav class="TopBar">
+            <button type="button" class="NavButton" data-target="ElevatorPanel">Agents</button>
+            <div class="Profile">
+                  <h1 id="Username">Username</h1>
+                  <h2 id="UserLevel">Level 1</h2>
+            </div>
+            <button type="button" class="NavButton" data-target="QuestPanel">Quests</button>
+      </nav>
 
-            <section id="hero">
-                  <div id="stats">
-                        <h2 id="username">JUSTICE</h2>
-                        <h3 id="level">LVL 0</h3>
-                        <div id="exp-bar">
-                              <div id="exp-progress" style="width: 0%;">0%</div>
-                        </div>
+      <main class="Layout">
+            <section id="ElevatorPanel" class="Elevator">
+                  <header class="PanelHeader">
+                        <h2>Agent Elevator</h2>
+                        <p class="PanelHint">Select an agent to chat and view their tools.</p>
+                  </header>
+                  <div id="Elevator" class="FloorList">
+                        <!-- Floors rendered via script.js -->
                   </div>
-
-                  <h1>QuestLog</h1>
-                  <p>"The journey of 1,000 steps begins with the first one"</p>
             </section>
 
-            
-
-            
-      </header>
-
-      <main>
-            
-
-            <div class="main-grid">
-                  
-                  <section id="quests">
-                        <div>
-                              <h2>Quests</h2>
-                              <p>Complete quests to earn XP and level up!</p>
-                        </div>
-                        
-                        <div class="quest-tabs">
-                              <button id="active-quests-button" onclick="toggleQuests()">📜 Active Quests</button>
-                              <button id="add-quest-button" onclick="toggleAddQuest()">+ Add Quest</button>
-                              <button id="completed-quests-button" onclick="toggleCompletedQuests()">✅ Completed</button>
-                        </div>
-
-                        <div id="add-quest" class="quest-tab hidden">
-                              
-                              <h3>Add New Quest</h3>
-                              <form id="quest-form">
-                                    <input type="text" id="quest-title" placeholder="Quest Title" required />
-                                    <textarea id="quest-description" placeholder="Quest Description" required></textarea>
-                                    
-                                    <select id="quest-difficulty" required>
-                                          <option value="" disabled selected>Select Difficulty</option>
-                                          <option value="easy">😋</option>
-                                          <option value="medium">😰</option>
-                                          <option value="hard">👹</option>
-                                          <option value="legendary">☠️</option>
-                                    </select>
-                                    <button type="submit">Add Quest</button>
-                              </form>
-                        </div>
-
-                        <div id="tab-active" class="quest-tab">
-                              <h3 id="active-quests-title">Active Quests</h3>
-                              <div id="quest-list"></div>
-                        </div>
-
-
-                        <div id="tab-completed" class="quest-tab hidden">
-                              <h3 id="completed-quests-title">Completed Quests</h3>
-                              <div id="completed-quest-list" class="quest-zone completed-zone"></div>
-                        </div>
-
-
-                        
-                  </section>
-
-                  <section id="schedule">
-                        <h2>Weekly Schedule</h2>
-
-                        <div class="gantt-container">
-                              <aside class="priject-sidebar">
-                                    <div class="project-tab">⚙️ Web Dev Site</div>
-                                    <div class="project-tab">Electric Skateboard</div>
-                                    <div class="project-tab">Quest Log</div>
-                                    <div class="project-tab">Magic Mirror</div>
-
-                              </aside>
-                              
-
-                        </div>
-                        <div class="gantt-container">
-                              
-
-                              <div class="gantt-header">
-                                    
-                                    <div class="gantt-day">Mon</div>
-                                    <div class="gantt-day">Tue</div>
-                                    <div class="gantt-day">Wed</div>
-                                    <div class="gantt-day">Thu</div>
-                                    <div class="gantt-day">Fri</div>
-                                    
+            <section class="Room">
+                  <article class="AI" id="AI">
+                        <header class="PanelHeader">
+                              <h1>Welcome to Quest Log MK2</h1>
+                              <p>Your personal quest management system.</p>
+                        </header>
+                        <div class="ChatBox">
+                              <div class="Messages" id="chatLog"></div>
+                              <div class="ChatInput">
+                                    <input type="text" placeholder="Type your message..." id="userInput">
+                                    <button type="button" id="SendButton">Send</button>
                               </div>
-                              <div class="gantt-body">
-                                    
-                                    <div class="gantt-time-column">
-                                          <div class="gantt-time">8:00 AM</div>
-                                          <div class="gantt-time">9:00 AM</div>
-                                          <div class="gantt-time">10:00 AM</div>
-                                          <div class="gantt-time">11:00 AM</div>
-                                          <div class="gantt-time">12:00 PM</div>
-                                          <div class="gantt-time">1:00 PM</div>
-                                          <div class="gantt-time">2:00 PM</div>
-                                          <div class="gantt-time">3:00 PM</div>
-                                          <div class="gantt-time">4:00 PM</div>
-                                          <div class="gantt-time">5:00 PM</div>
-                                          <div class="gantt-time">6:00 PM</div>
-                                          <div class="gantt-time">7:00 PM</div>
-                                          <div class="gantt-time">8:00 PM</div>
-                                    </div>
+                        </div>
+                  </article>
+                  <aside class="Player">
+                        <div class="ToolBar" id="ToolBar">
+                              <!-- Tool buttons rendered via script.js -->
+                        </div>
+                  </aside>
+            </section>
 
-                                    <div class="gantt-week">
-                                          
-                                          <div class="gantt-day" data-day="mon">
-                                                
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
+            <section id="QuestPanel" class="Quests">
+                  <header class="PanelHeader">
+                        <h2>Active Quests</h2>
+                        <button id="AddQuestButton" type="button">+</button>
+                  </header>
 
-                                          <div class="gantt-day" data-day="tue">
-                                                
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
-                                                
-                                          <div class="gantt-day" data-day="wed">
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
-                                          <div class="gantt-day" data-day="thu">
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
-                                          <div class="gantt-day" data-day="fri">
-                                                <div class="time-slot" data-hour="8AM"></div>
-                                                <div class="time-slot" data-hour="9AM"></div>
-                                                <div class="time-slot" data-hour="10AM"></div>
-                                                <div class="time-slot" data-hour="11AM"></div>
-                                                <div class="time-slot" data-hour="12PM"></div>
-                                                <div class="time-slot" data-hour="1PM"></div>
-                                                <div class="time-slot" data-hour="2PM"></div>
-                                                <div class="time-slot" data-hour="3PM"></div>
-                                                <div class="time-slot" data-hour="4PM"></div>
-                                                <div class="time-slot" data-hour="5PM"></div>
-                                                <div class="time-slot" data-hour="6PM"></div>
-                                                <div class="time-slot" data-hour="7PM"></div>
-                                                <div class="time-slot" data-hour="8PM"></div>
-                                          </div>
-                                         
-                                    </div>
+                  <form id="AddQuestForm" class="hidden FormCard">
+                        <label>
+                              <span>Quest Title</span>
+                              <input type="text" id="NewQuestTitle" placeholder="Quest Title">
+                        </label>
+                        <label>
+                              <span>Description</span>
+                              <textarea id="NewQuestDescription" placeholder="Quest Description"></textarea>
+                        </label>
+                        <button type="submit">Add Quest</button>
+                  </form>
 
-                                    
+                  <div id="QuestList" class="QuestList">
+                        <!-- Quests rendered via script.js -->
+                  </div>
+                  <section class="TaskQueuePanel">
+                        <header class="PanelHeader">
+                              <h2>QuestBoard Tasks</h2>
+                              <div class="TaskQueueActions">
+                                    <button id="RefreshTasksButton" type="button">Refresh</button>
+                                    <button id="ProcessTaskButton" type="button">Process Next</button>
                               </div>
-
-                              
+                        </header>
+                        <div id="TaskQueueList" class="TaskQueueList">
+                              <!-- Task queue rendered via script.js -->
                         </div>
                   </section>
-            </div>
+            </section>
       </main>
 
       <script src="script.js"></script>
-
 </body>
-
-
 </html>

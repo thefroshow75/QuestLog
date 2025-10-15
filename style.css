@@ -1,212 +1,604 @@
-/* Quest Board */
-.hidden {
-      display: none !important;
+:root {
+      --bg: #0f172a;
+      --panel: #111c3a;
+      --panel-light: #1a2c4f;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.15);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: rgba(148, 163, 184, 0.2);
+      --success: #4ade80;
+      --danger: #f87171;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color-scheme: dark;
 }
 
-
-html {
-      height: 100%;
-      overflow: hidden;
+* {
+      box-sizing: border-box;
 }
 
 body {
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #0d1b2a;
-      color: #fff;
-      height: 100%;
-      overflow: hidden;
+      padding: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #15203f, var(--bg));
+      color: var(--text);
 }
 
-.quest-ui {
-      display: flex;
-      height: calc(100vh - 100px);
-      overflow: hidden;
+.hidden {
+      display: none !important;
 }
 
-/* Hero Section */
-
-#hero {
+.TopBar {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center;
-      background: #333;
-      color: white;
-      padding: 20px;
+      padding: 0 24px;
+      height: 70px;
+      background: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 10px 30px rgba(8, 13, 28, 0.6);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
 }
 
-#stats {
+.NavButton {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid transparent;
+      padding: 10px 18px;
+      border-radius: 999px;
+      transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.NavButton:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+}
+
+.Profile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+}
+
+.Profile h1 {
+      margin: 0;
+      font-size: 1.25rem;
+}
+
+.Profile h2 {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 400;
+}
+
+.Layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr) 360px;
+      gap: 24px;
+      padding: 32px clamp(20px, 6vw, 60px);
+}
+
+.Elevator,
+.Room,
+.Quests {
+      background: linear-gradient(160deg, rgba(17, 28, 58, 0.95), rgba(17, 28, 58, 0.75));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 0 20px 60px rgba(8, 13, 28, 0.55);
+}
+
+.PanelHeader {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+}
+
+.PanelHeader h2,
+.PanelHeader h1 {
+      margin: 0;
+      font-size: 1.3rem;
+      letter-spacing: 0.03em;
+}
+
+.PanelHint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+}
+
+.FloorList {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      padding-right: 6px;
+}
+
+.Floor {
+      background: rgba(17, 28, 58, 0.75);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      text-align: left;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+}
+
+.Floor:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 25px rgba(56, 189, 248, 0.15);
+}
+
+.Floor.selected {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(17, 28, 58, 0.8));
+}
+
+.FloorHeader {
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+}
+
+.FloorHeader h3 {
+      margin: 0;
+      font-size: 1.05rem;
+}
+
+.FloorAvatar {
+      width: 36px;
+      height: 36px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+}
+
+.FloorDescription {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+}
+
+.FloorTools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+      font-size: 0.8rem;
+}
+
+.FloorTools li {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 999px;
+}
+
+.Room {
       gap: 20px;
 }
 
-#exp-bar {
-      width: 200px;
-      height: 20px;
-      background: #ddd;
-      border-radius: 10px;
-      overflow: hidden;
-}
-
-#exp-progress {
-      height: 100%;
-      background: #4CAF50;
-      text-align: center;
-      color: white;
-      font-size: 12px;
-      line-height: 20px;
-}
-
-/* Project Section */
-
-.sidebar {
-      width: 25%;
-      background: #1b263b;
-      padding: 1rem;
-      overflow-y: auto;
-      border-right: 2px solid #415a77;
-}
-
-.project-tab {
-      background: #415a77;
-      border-radius: 10px;
-      margin-bottom: 1rem;
-      padding: 1rem;
-      cursor: pointer;
-      transition: 0.3s ease;
-}
-
-.project-tab:hover {
-      background: #778da9;
-}
-
-.project-tab img.project-image {
-      width: 100%;
-      height: auto;
-      border-radius: 8px;
-      margin-bottom: 0.5rem;
-}
-
-.project-tab h3 {
-      margin: 0.5rem 0 0.25rem;
-}
-
-/* Quest Section */
-
-.quest-list {
-      width: 50%;
-      padding: 1.5rem;
-      overflow-y: auto;
-}
-
-.quest-item {
-      background: #415a77;
-      border-radius: 10px;
-      margin-bottom: 1rem;
-      padding: 1rem;
-      cursor: pointer;
-      transition: 0.3s ease;
-}
-
-
-
-.quest-item:hover {
-      background: #778da9;
-}
-
-.quest-tasks {
-      display: none;
-      margin-top: 0.75rem;
-      padding-left: 1rem;
-}
-
-.quest-item.active .quest-tasks {
-      display: block;
-}
-
-/* QuestBot Section */
-
-#aiChatPanel{
-      width: 25%;
-      background: #0f1f3a;
-      padding: 1rem;
-      border-left: 2px solid #415a77;
-      height: 100%;
-      overflow-y: auto;
-}
-
-#aiChatPanel {
+.AI {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
+      gap: 16px;
 }
 
-#chatLog {
-      flex: 1;
-      padding: 0.75rem;
-      background: #13263f;
-      color: #c0ffee;
-      font-family: monospace;
-      border-radius: 6px;
-      overflow-y: auto;
-      margin-bottom: 10px;
-      max-height: calc(100vh - 220px); /* Prevents overflow under form */
-}
-
-#chatInput {
-      resize: none;
-      height: 80px;
-      padding: 0.5rem;
-      border-radius: 6px;
-      border: none;
-      background: #1e3554;
-      color: white;
-      margin-bottom: 10px;
-      font-family: 'Segoe UI', sans-serif;
-}
-
-#aiChatPanel button {
-      background: #4CAF50;
-      border: none;
-      padding: 0.75rem;
-      border-radius: 6px;
-      cursor: pointer;
-      color: white;
-      transition: background 0.3s ease;
-}
-
-#aiChatPanel button:hover {
-      background: #3e9142;
-}
-
-
-/* Add Quest/Project Form Display */
-
-.formOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.7);
+.ChatBox {
       display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
+      flex-direction: column;
+      gap: 12px;
 }
 
-#formBox {
-      background: #1b263b;
-      padding: 2rem;
+.Messages {
+      min-height: 280px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding: 18px;
+      border-radius: 14px;
+      background: rgba(17, 28, 58, 0.6);
+      border: 1px solid var(--border);
+      box-shadow: inset 0 0 12px rgba(8, 13, 28, 0.45);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+}
+
+.Message {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 14px;
+      background: rgba(148, 163, 184, 0.12);
       border-radius: 12px;
-      width: 300px;
-      box-shadow: 0 0 10px #000;
+      line-height: 1.4;
 }
 
-#formBox input {
-      width: 100%;
-      margin-bottom: 1rem;
-      padding: 0.5rem;
+.Message strong {
+      color: var(--accent);
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+}
+
+.QuestSummary {
+      background: var(--accent-soft);
+}
+
+.ChatInput {
+      display: flex;
+      gap: 12px;
+}
+
+.ChatInput input {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.7);
+      color: var(--text);
+}
+
+.ChatInput input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+}
+
+.ChatInput button {
+      min-width: 90px;
+}
+
+.Player {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+}
+
+.ToolBar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      min-height: 60px;
+      align-content: flex-start;
+}
+
+.Quests {
+      gap: 18px;
+}
+
+.FormCard {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(17, 28, 58, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+}
+
+.FormCard label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.85rem;
+}
+
+.FormCard input,
+.FormCard textarea {
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.7);
+      color: var(--text);
+      resize: vertical;
+}
+
+.QuestList {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      padding-right: 6px;
+}
+
+.QuestCard {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 18px;
+      border-radius: 16px;
+      background: rgba(17, 28, 58, 0.75);
+      border: 1px solid var(--border);
+}
+
+.TaskQueuePanel {
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+}
+
+.TaskQueueActions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+}
+
+.TaskQueueActions button {
+      background: rgba(56, 189, 248, 0.18);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: var(--text);
+      padding: 8px 14px;
+}
+
+.TaskQueueActions button:hover {
+      box-shadow: 0 8px 18px rgba(56, 189, 248, 0.18);
+}
+
+.TaskQueueList {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 6px;
+}
+
+.TaskCard {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 18px;
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border);
+}
+
+.TaskCardHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+}
+
+.TaskCardHeader h3 {
+      margin: 0;
+      font-size: 1.05rem;
+}
+
+.TaskStatus {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(148, 163, 184, 0.2);
+      color: var(--muted);
+}
+
+.TaskMeta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+}
+
+.TaskDescription {
+      margin: 0;
+      color: var(--text);
+      font-size: 0.9rem;
+}
+
+.TaskActions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+}
+
+.TaskActions button {
+      background: rgba(59, 130, 246, 0.18);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      color: var(--text);
+}
+
+.TaskActions button:disabled,
+.TaskQueueActions button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+}
+
+.TaskPriority {
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+}
+
+.priority-urgent {
+      color: #f87171;
+}
+
+.priority-high {
+      color: #fb923c;
+}
+
+.priority-normal {
+      color: #38bdf8;
+}
+
+.priority-low {
+      color: #a5b4fc;
+}
+
+.status-pending {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+}
+
+.status-in_progress {
+      background: rgba(249, 115, 22, 0.2);
+      color: #f97316;
+}
+
+.status-completed {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+}
+
+.status-failed {
+      background: rgba(248, 113, 113, 0.2);
+      color: #f87171;
+}
+
+.status-cancelled {
+      background: rgba(148, 163, 184, 0.2);
+      color: var(--muted);
+}
+
+.QuestCard header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+}
+
+.QuestCard h3 {
+      margin: 0;
+      font-size: 1.05rem;
+}
+
+.QuestStatus {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: rgba(148, 163, 184, 0.2);
+      color: var(--muted);
+}
+
+.QuestActions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+}
+
+.SubTasks {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px dashed var(--border);
+}
+
+.SubTask {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+}
+
+.Muted {
+      color: var(--muted);
+}
+
+.EmptyMessage {
+      margin: 0;
+      padding: 18px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(17, 28, 58, 0.6);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+}
+
+button {
+      background: linear-gradient(135deg, var(--accent), #0ea5e9);
+      color: var(--text);
       border: none;
-      border-radius: 6px;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.2s ease;
+      letter-spacing: 0.02em;
+}
+
+button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(56, 189, 248, 0.25);
+}
+
+button:active {
+      transform: translateY(0);
+      box-shadow: none;
+}
+
+#AddQuestButton {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+}
+
+@media (max-width: 1200px) {
+      .Layout {
+            grid-template-columns: 280px minmax(0, 1fr);
+            grid-template-areas:
+                  "elevator room"
+                  "quests quests";
+      }
+
+      .Quests {
+            grid-column: span 2;
+      }
+}
+
+@media (max-width: 900px) {
+      .Layout {
+            grid-template-columns: 1fr;
+      }
+
+      .Elevator,
+      .Room,
+      .Quests {
+            grid-column: 1 / -1;
+      }
+}
+
+.ToolBar button {
+      background: rgba(15, 23, 42, 0.55) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--muted) !important;
+      cursor: not-allowed !important;
+      box-shadow: none !important;
 }
